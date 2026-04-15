@@ -25,9 +25,23 @@ const app = express();
 app.use(helmet());
 
 // CORS configuration with more options
-const allowedOrigins = process.env.NODE_ENV === 'production'
-    ? ['https://yellowtea.in', 'https://admin.yellowtea.in']
-    : ['http://localhost:4000', 'http://localhost:8081', 'http://localhost:8082', 'http://localhost:5173'];
+const envAllowedOrigins = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+const baseAllowedOrigins = [
+    'https://yellowtea.in',
+    'https://www.yellowtea.in',
+    'https://admin.yellowtea.in',
+    'https://api.yellowtea.in'
+];
+
+const allowedOrigins = envAllowedOrigins.length
+    ? envAllowedOrigins
+    : process.env.NODE_ENV === 'production'
+        ? baseAllowedOrigins
+        : ['http://localhost:4000', 'http://localhost:8081', 'http://localhost:8082', 'http://localhost:5173', ...baseAllowedOrigins];
 
 const corsOptions = {
     origin: function (origin, callback) {
