@@ -141,8 +141,7 @@ Desktop.ini
 *.sqlite3
 
 # Upload directories
-uploads/
-public/uploads/
+
 
 # SSL certificates
 *.pem
