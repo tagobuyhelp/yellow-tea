@@ -7,10 +7,25 @@ const adminAxios = axios.create({
   baseURL: `${API_BASE}/admin`,
 });
 
+const apiAxios = axios.create({
+  baseURL: API_BASE,
+});
+
 // Attach token from cookies to every request
 // Attach token from cookies to every request
 adminAxios.interceptors.request.use((config) => {
 
+  let token = Cookies.get('jwt');
+  if (!token) {
+    token = localStorage.getItem('token');
+  }
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+apiAxios.interceptors.request.use((config) => {
   let token = Cookies.get('jwt');
   if (!token) {
     token = localStorage.getItem('token');
@@ -132,6 +147,22 @@ const adminAPI = {
   },
   clearCache: async () => {
     const res = await adminAxios.post('/system/cache/clear');
+    return res.data;
+  },
+  getSettings: async () => {
+    const res = await adminAxios.get('/settings');
+    return res.data;
+  },
+  updateSettings: async (data: unknown) => {
+    const res = await adminAxios.put('/settings', data, { headers: { 'Content-Type': 'application/json' } });
+    return res.data;
+  },
+  updateSettingsGroup: async (group: 'store' | 'payments' | 'shipping' | 'notifications', data: unknown) => {
+    const res = await adminAxios.patch(`/settings/${group}`, data, { headers: { 'Content-Type': 'application/json' } });
+    return res.data;
+  },
+  updatePassword: async (data: { currentPassword: string; newPassword: string }) => {
+    const res = await apiAxios.patch('/auth/update-password', data, { headers: { 'Content-Type': 'application/json' } });
     return res.data;
   },
 };

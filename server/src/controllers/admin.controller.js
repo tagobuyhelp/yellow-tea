@@ -5,10 +5,12 @@ import Product from '../models/product.model.js';
 import User from '../models/user.model.js';
 import AdminLog from '../models/adminLog.model.js';
 import DraftProduct from '../models/draftProduct.model.js';
+import Settings from '../models/settings.model.js';
 import slugify from 'slugify';
 import uploadToCloudinary from '../utils/uploadToCloudinary.js';
 import { sendUserNotification } from '../utils/responseHandler.js';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 
 // ==================== DASHBOARD ====================
 export const getAdminDashboard = async (req, res, next) => {
@@ -1154,20 +1156,229 @@ export const clearCache = async (req, res, next) => {
 };
 
 /**
- * @desc    Get admin settings (chargeDelivery, chargeGST)
+ * @desc    Get admin settings
  * @route   GET /api/v1/admin/settings
  * @access  Admin
  */
 export const getAdminSettings = async (req, res, next) => {
     try {
-        // You can later fetch these from DB or env, for now hardcode
-        const settings = {
-            chargeDelivery: false,
-            chargeGST: true,
-            pickupPincode: '741165'
+        const doc = await Settings.findOneAndUpdate(
+            { singleton_key: 'global' },
+            { $setOnInsert: {} },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        ).lean();
+
+        const safe = {
+            ...doc,
+            payments: {
+                ...doc.payments,
+                razorpayKeySecretEnc: undefined,
+                razorpayKeySecretSet: Boolean(doc.payments?.razorpayKeySecretEnc)
+            }
         };
-        res.status(200).json(settings);
+
+        const data = {
+            settings: safe,
+            chargeDelivery: Boolean(doc.shipping?.chargeDelivery),
+            chargeGST: Boolean(doc.shipping?.chargeGST),
+            pickupPincode: doc.shipping?.pickupPincode || ''
+        };
+
+        res.status(200).json(new ApiResponse(200, data, 'Settings retrieved successfully'));
     } catch (error) {
         next(error);
     }
 }; 
+
+const normalizeString = (value) => {
+    if (value == null) return undefined;
+    if (typeof value !== 'string') return String(value);
+    return value.trim();
+};
+
+const normalizeNumber = (value) => {
+    if (value == null || value === '') return undefined;
+    const n = typeof value === 'number' ? value : Number(value);
+    if (Number.isNaN(n)) return undefined;
+    return n;
+};
+
+const normalizeBoolean = (value) => {
+    if (typeof value === 'boolean') return value;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return undefined;
+};
+
+const isValidEmail = (email) => {
+    if (!email) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+const encryptSecret = (plain) => {
+    const text = normalizeString(plain);
+    if (!text) return undefined;
+
+    const keyMaterial = normalizeString(process.env.SETTINGS_ENCRYPTION_KEY);
+    if (!keyMaterial) {
+        return text;
+    }
+
+    const key = crypto.createHash('sha256').update(keyMaterial).digest();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const ciphertext = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+    const tag = cipher.getAuthTag();
+
+    return `${iv.toString('base64')}:${tag.toString('base64')}:${ciphertext.toString('base64')}`;
+};
+
+const buildSettingsPatch = ({ store, payments, shipping, notifications }) => {
+    const patch = {};
+
+    if (store && typeof store === 'object') {
+        const s = {};
+        if (store.name != null) s.name = normalizeString(store.name);
+        if (store.description != null) s.description = normalizeString(store.description);
+        if (store.email != null) s.email = normalizeString(store.email);
+        if (store.phone != null) s.phone = normalizeString(store.phone);
+        if (store.address != null) s.address = normalizeString(store.address);
+        if (store.currency != null) s.currency = normalizeString(store.currency);
+        if (store.timezone != null) s.timezone = normalizeString(store.timezone);
+        if (store.logoUrl != null) s.logoUrl = normalizeString(store.logoUrl);
+        if (Object.keys(s).length) patch.store = s;
+    }
+
+    if (payments && typeof payments === 'object') {
+        const p = {};
+        const razorpayEnabled = normalizeBoolean(payments.razorpayEnabled);
+        if (razorpayEnabled !== undefined) p.razorpayEnabled = razorpayEnabled;
+        if (payments.razorpayKeyId != null) p.razorpayKeyId = normalizeString(payments.razorpayKeyId);
+
+        const secretEnc = encryptSecret(payments.razorpayKeySecret);
+        if (secretEnc !== undefined) p.razorpayKeySecretEnc = secretEnc;
+
+        const codEnabled = normalizeBoolean(payments.codEnabled);
+        if (codEnabled !== undefined) p.codEnabled = codEnabled;
+        const minOrderAmount = normalizeNumber(payments.minOrderAmount);
+        if (minOrderAmount !== undefined) p.minOrderAmount = minOrderAmount;
+        const maxOrderAmount = normalizeNumber(payments.maxOrderAmount);
+        if (maxOrderAmount !== undefined) p.maxOrderAmount = maxOrderAmount;
+        if (Object.keys(p).length) patch.payments = p;
+    }
+
+    if (shipping && typeof shipping === 'object') {
+        const sh = {};
+        const freeShippingThreshold = normalizeNumber(shipping.freeShippingThreshold);
+        if (freeShippingThreshold !== undefined) sh.freeShippingThreshold = freeShippingThreshold;
+        const standardShipping = normalizeNumber(shipping.standardShipping);
+        if (standardShipping !== undefined) sh.standardShipping = standardShipping;
+        const expressShipping = normalizeNumber(shipping.expressShipping);
+        if (expressShipping !== undefined) sh.expressShipping = expressShipping;
+        const internationalShipping = normalizeNumber(shipping.internationalShipping);
+        if (internationalShipping !== undefined) sh.internationalShipping = internationalShipping;
+        const shippingTax = normalizeNumber(shipping.shippingTax);
+        if (shippingTax !== undefined) sh.shippingTax = shippingTax;
+        if (shipping.pickupPincode != null) sh.pickupPincode = normalizeString(shipping.pickupPincode);
+        const chargeDelivery = normalizeBoolean(shipping.chargeDelivery);
+        if (chargeDelivery !== undefined) sh.chargeDelivery = chargeDelivery;
+        const chargeGST = normalizeBoolean(shipping.chargeGST);
+        if (chargeGST !== undefined) sh.chargeGST = chargeGST;
+        if (Object.keys(sh).length) patch.shipping = sh;
+    }
+
+    if (notifications && typeof notifications === 'object') {
+        const n = {};
+        for (const key of ['emailNotifications', 'smsNotifications', 'orderNotifications', 'lowStockAlerts', 'customerRegistration', 'weeklyReports']) {
+            const v = normalizeBoolean(notifications[key]);
+            if (v !== undefined) n[key] = v;
+        }
+        if (Object.keys(n).length) patch.notifications = n;
+    }
+
+    return patch;
+};
+
+const validateSettingsPatch = (patch) => {
+    if (patch.store?.email && !isValidEmail(patch.store.email)) {
+        return 'Store email is invalid';
+    }
+    if (patch.shipping?.pickupPincode && !/^\d{6}$/.test(patch.shipping.pickupPincode)) {
+        return 'Pickup pincode must be a 6 digit number';
+    }
+    const min = patch.payments?.minOrderAmount;
+    const max = patch.payments?.maxOrderAmount;
+    if (typeof min === 'number' && min < 0) return 'Minimum order amount must be >= 0';
+    if (typeof max === 'number' && max < 0) return 'Maximum order amount must be >= 0';
+    if (typeof min === 'number' && typeof max === 'number' && max && min && max < min) {
+        return 'Maximum order amount must be >= minimum order amount';
+    }
+    return null;
+};
+
+export const updateAdminSettings = async (req, res, next) => {
+    try {
+        const patch = buildSettingsPatch(req.body || {});
+        const error = validateSettingsPatch(patch);
+        if (error) return next(new ApiError(400, error));
+
+        if (!Object.keys(patch).length) {
+            return next(new ApiError(400, 'No valid settings provided'));
+        }
+
+        const updated = await Settings.findOneAndUpdate(
+            { singleton_key: 'global' },
+            { $set: patch, $inc: { version: 1 } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        ).lean();
+
+        const safe = {
+            ...updated,
+            payments: {
+                ...updated.payments,
+                razorpayKeySecretEnc: undefined,
+                razorpayKeySecretSet: Boolean(updated.payments?.razorpayKeySecretEnc)
+            }
+        };
+
+        res.status(200).json(new ApiResponse(200, { settings: safe }, 'Settings updated successfully'));
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateAdminSettingsGroup = async (req, res, next) => {
+    try {
+        const group = normalizeString(req.params.group);
+        if (!group || !['store', 'payments', 'shipping', 'notifications'].includes(group)) {
+            return next(new ApiError(400, 'Invalid settings group'));
+        }
+
+        const patch = buildSettingsPatch({ [group]: req.body || {} });
+        const error = validateSettingsPatch(patch);
+        if (error) return next(new ApiError(400, error));
+
+        if (!Object.keys(patch).length) {
+            return next(new ApiError(400, 'No valid settings provided'));
+        }
+
+        const updated = await Settings.findOneAndUpdate(
+            { singleton_key: 'global' },
+            { $set: patch, $inc: { version: 1 } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        ).lean();
+
+        const safe = {
+            ...updated,
+            payments: {
+                ...updated.payments,
+                razorpayKeySecretEnc: undefined,
+                razorpayKeySecretSet: Boolean(updated.payments?.razorpayKeySecretEnc)
+            }
+        };
+
+        res.status(200).json(new ApiResponse(200, { settings: safe }, 'Settings updated successfully'));
+    } catch (error) {
+        next(error);
+    }
+};

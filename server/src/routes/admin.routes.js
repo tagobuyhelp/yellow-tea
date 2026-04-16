@@ -39,7 +39,9 @@ import {
     // System Operations
     getSystemHealth,
     clearCache,
-    getAdminSettings
+    getAdminSettings,
+    updateAdminSettings,
+    updateAdminSettingsGroup
 } from '../controllers/admin.controller.js';
 import { isAuthenticated } from '../middlewares/auth.middleware.js';
 import { restrictTo } from '../middlewares/role.middleware.js';
@@ -109,7 +111,11 @@ router.route('/users/:id')
 router.get('/analytics', getAnalytics);
 
 // ==================== SETTINGS ====================
-router.get('/settings', getAdminSettings);
+router.route('/settings')
+    .get(getAdminSettings)
+    .put(updateAdminSettings);
+
+router.patch('/settings/:group', updateAdminSettingsGroup);
 
 // ==================== SYSTEM OPERATIONS ====================
 router.get('/system/health', getSystemHealth);
