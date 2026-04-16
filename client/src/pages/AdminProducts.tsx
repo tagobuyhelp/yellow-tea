@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Edit, Trash2, Loader2, ChevronDown, Info, Video, Package, Tag, DollarSign, Star, TrendingUp, Filter, Grid3X3, List, X } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Loader2, ChevronDown, Info, Video, Package, Tag, DollarSign, Star, TrendingUp, Filter, Grid3X3, List, X, Type, MapPin, Leaf, Boxes, BadgePercent, Image as ImageIcon, FileText, QrCode, Gift, Thermometer, Timer, Sprout, Mountain, CalendarDays, Hash, MessageSquareQuote, Coffee } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useProductDraft } from "@/hooks/use-product-draft";
 
 // Types for product form fields
 interface Origin {
@@ -142,12 +143,62 @@ const AdminProducts: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsProduct, setDetailsProduct] = useState<Product | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
   const [isEditMode, setIsEditMode] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'category' | 'rating'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const editDraftProductId = useMemo(() => {
+    const id = selectedProduct?._id || selectedProduct?.id;
+    return typeof id === "string" ? id : undefined;
+  }, [selectedProduct]);
+
+  const draft = useProductDraft<ProductFormData>({
+    enabled: isAddDialogOpen || (isEditDialogOpen && !!editDraftProductId),
+    mode: isEditDialogOpen ? "edit" : "create",
+    productId: isEditDialogOpen ? editDraftProductId : undefined,
+    getData: () => formData,
+    applyData: (data) => setFormData(data),
+  });
+
+  const productEditorSections = useMemo(
+    () =>
+      [
+        { id: "basic-info", label: "Basic Information" },
+        { id: "pricing-inventory", label: "Pricing & Inventory" },
+        { id: "product-images", label: "Product Images" },
+        { id: "description", label: "Description" },
+        { id: "tags-seo", label: "Tags & SEO" },
+        { id: "publish-settings", label: "Publish Settings" },
+      ] as const,
+    []
+  );
+
+  const [activeEditorSectionId, setActiveEditorSectionId] =
+    useState<(typeof productEditorSections)[number]["id"]>("basic-info");
+
+  useEffect(() => {
+    if (!isAddDialogOpen && !isEditDialogOpen) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => (b.intersectionRatio || 0) - (a.intersectionRatio || 0))[0];
+        const id = visible?.target?.id as (typeof productEditorSections)[number]["id"] | undefined;
+        if (id) setActiveEditorSectionId(id);
+      },
+      { rootMargin: "-35% 0px -55% 0px", threshold: [0.15, 0.25, 0.5] }
+    );
+
+    for (const section of productEditorSections) {
+      const el = document.getElementById(section.id);
+      if (el) observer.observe(el);
+    }
+
+    return () => observer.disconnect();
+  }, [isAddDialogOpen, isEditDialogOpen, productEditorSections]);
 
   // Helper function to format date for input
   function toDateInputValue(dateString: string | undefined): string {
@@ -160,27 +211,13 @@ const AdminProducts: React.FC = () => {
     }
   }
 
-  const handleNextStep = (isEdit = false) => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrevStep = (isEdit = false) => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
   function handleCloseAddDialog() {
     setIsAddDialogOpen(false);
-    setCurrentStep(1);
     setFormErrors({});
   }
 
   function handleCloseEditDialog() {
     setIsEditDialogOpen(false);
-    setCurrentStep(1);
     setFormErrors({});
     setSelectedProduct(null);
   }
@@ -400,7 +437,11 @@ const AdminProducts: React.FC = () => {
   const handleRemoveImage = (index: number) => {
 
     const updatedImages = formData.images.filter((_, i) => i !== index);
-    setFormData({ ...formData, images: updatedImages });
+    setFormData((prev) => {
+      const next = { ...prev, images: updatedImages };
+      void draft.flushSaveWith(next);
+      return next;
+    });
   };
 
   const handleAddProduct = () => {
@@ -447,7 +488,7 @@ const AdminProducts: React.FC = () => {
       type: product.type || [],
       price: product.price,
       quantity: product.quantity,
-      description: product.subtitle,
+      description: product.description || product.subtitle || "",
       images: product.images || [],
       offer: product.offer || "",
       gift_included: product.gift_included || "No",
@@ -646,16 +687,45 @@ const AdminProducts: React.FC = () => {
         images: ensureArray(validatedData.images, 'final_images')
       };
       
-      await adminAPI.createProduct(finalData);
+      const images = Array.isArray(finalData.images) ? finalData.images : [];
+      const hasNewFiles = images.some((img) => img instanceof File);
+      const payload = hasNewFiles
+        ? (() => {
+            const fd = new FormData();
+            const entries = Object.entries(finalData as Record<string, unknown>);
+            for (const [key, value] of entries) {
+              if (value === undefined || value === null) continue;
+              if (key === "images") continue;
+              if (typeof value === "object") {
+                fd.append(key, JSON.stringify(value));
+              } else {
+                fd.append(key, String(value));
+              }
+            }
+
+            const existingUrls = images.filter((img) => typeof img === "string");
+            fd.append("images", JSON.stringify(existingUrls));
+
+            const files = images.filter((img) => img instanceof File) as File[];
+            for (const file of files) {
+              fd.append("images", file);
+            }
+            return fd;
+          })()
+        : finalData;
+
+      await adminAPI.createProduct(payload);
+      await draft.clearDraft();
       toast({
         title: "Success",
         description: "Product added successfully",
       });
       setIsAddDialogOpen(false);
       fetchProducts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error creating product:', error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to add product";
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = err.response?.data?.message || err.message || "Failed to add product";
       toast({
         title: "Error",
         description: errorMessage,
@@ -709,16 +779,45 @@ const AdminProducts: React.FC = () => {
         images: ensureArray(validatedData.images, 'final_images')
       };
       
-      await adminAPI.updateProduct(productId, finalData);
+      const images = Array.isArray(finalData.images) ? finalData.images : [];
+      const hasNewFiles = images.some((img) => img instanceof File);
+      const payload = hasNewFiles
+        ? (() => {
+            const fd = new FormData();
+            const entries = Object.entries(finalData as Record<string, unknown>);
+            for (const [key, value] of entries) {
+              if (value === undefined || value === null) continue;
+              if (key === "images") continue;
+              if (typeof value === "object") {
+                fd.append(key, JSON.stringify(value));
+              } else {
+                fd.append(key, String(value));
+              }
+            }
+
+            const existingUrls = images.filter((img) => typeof img === "string");
+            fd.append("images", JSON.stringify(existingUrls));
+
+            const files = images.filter((img) => img instanceof File) as File[];
+            for (const file of files) {
+              fd.append("images", file);
+            }
+            return fd;
+          })()
+        : finalData;
+
+      await adminAPI.updateProduct(productId, payload);
+      await draft.clearDraft();
       toast({
         title: "Success",
         description: "Product updated successfully",
       });
       setIsEditDialogOpen(false);
       fetchProducts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error updating product:', error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to update product";
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = err.response?.data?.message || err.message || "Failed to update product";
       toast({
         title: "Error",
         description: errorMessage,
@@ -800,6 +899,394 @@ const AdminProducts: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isAddDialogOpen || isEditDialogOpen) {
+    const editorTitle = isEditDialogOpen ? "Edit Product" : "Add New Product";
+    const publishLabel = isEditDialogOpen ? "Publish Changes" : "Publish Product";
+    const handleBack = isEditDialogOpen ? handleCloseEditDialog : handleCloseAddDialog;
+    const handlePublish = isEditDialogOpen ? handleEditProductSubmit : handleAddProductSubmit;
+
+    const saveStatusText =
+      draft.uiStatus === "saving"
+        ? "Saving…"
+        : draft.uiStatus === "saved"
+          ? "All changes saved"
+          : draft.uiStatus === "offline"
+            ? "Offline – syncing later"
+            : draft.uiStatus === "error"
+              ? "Sync failed – retrying"
+              : draft.uiStatus === "conflict"
+                ? "Draft conflict detected"
+                : draft.lastSavedAt
+                  ? "All changes saved"
+                  : "Not saved yet";
+
+    return (
+      <div className="space-y-6">
+        <div className="sticky top-16 z-20 bg-background/90 backdrop-blur border border-border rounded-xl shadow-sm">
+          <div className="px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl font-heading text-foreground truncate">{editorTitle}</h2>
+              <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>Your progress is saved automatically</span>
+                <span className="text-yt-green">{saveStatusText}</span>
+                {draft.lastSavedAt && <span>Last saved at {draft.lastSavedAt.toLocaleTimeString()}</span>}
+              </div>
+              {draft.conflictInfo && (
+                <div className="mt-3 flex items-center justify-between text-xs border rounded-lg p-2 bg-card">
+                  <div className="text-muted-foreground">
+                    A newer draft exists on the server ({draft.conflictInfo.serverUpdatedAt.toLocaleString()}).
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => void draft.resolveConflictKeepLocal()}>
+                    Keep My Version
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={handleBack} disabled={formLoading}>
+                Back to Products
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  void draft.flushSave();
+                  toast({ title: "Draft saved", description: draft.isOnline ? "Saved and syncing in background." : "Saved locally. Will sync when online." });
+                }}
+                disabled={formLoading}
+              >
+                Save as Draft
+              </Button>
+              <Button onClick={handlePublish} disabled={formLoading}>
+                {formLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} {publishLabel}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-[1fr_260px] gap-6 items-start">
+          <div className="space-y-6 [&_label]:mb-2" onBlurCapture={() => void draft.flushSave()}>
+            <Card id="basic-info" className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="font-heading text-lg">Basic Information</CardTitle>
+                <div className="text-sm text-muted-foreground">Core details shown to customers.</div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name" className="flex items-center gap-2"><Type className="h-4 w-4 text-muted-foreground" />Product Name</Label>
+                    <Input id="name" placeholder="e.g., Darjeeling First Flush Gold" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                    {formErrors.name && <div className="text-yt-error text-xs mt-1">{formErrors.name}</div>}
+                  </div>
+                  <div>
+                    <Label htmlFor="category" className="flex items-center gap-2"><Package className="h-4 w-4 text-muted-foreground" />Category</Label>
+                    <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="e.g., Full Size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Trial Pack">Trial Pack</SelectItem>
+                        <SelectItem value="Gift Box">Gift Box</SelectItem>
+                        <SelectItem value="Full Size">Full Size</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formErrors.category && <div className="text-yt-error text-xs mt-1">{formErrors.category}</div>}
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="subtitle" className="flex items-center gap-2"><MessageSquareQuote className="h-4 w-4 text-muted-foreground" />Subtitle</Label>
+                    <Input id="subtitle" placeholder="e.g., Bright floral notes with smooth finish" value={formData.subtitle} onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="type" className="flex items-center gap-2"><Tag className="h-4 w-4 text-muted-foreground" />Type (comma separated)</Label>
+                    <Input id="type" placeholder="e.g., Black Tea, Whole Leaf" value={Array.isArray(formData.type) ? formData.type.join(", ") : ""} onChange={(e) => setFormData({ ...formData, type: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })} />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="region" className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" />Region</Label>
+                    <Input id="region" placeholder="e.g., Darjeeling, West Bengal" value={formData.region || ""} onChange={(e) => setFormData({ ...formData, region: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="flush" className="flex items-center gap-2"><Leaf className="h-4 w-4 text-muted-foreground" />Flush</Label>
+                    <Input id="flush" placeholder="e.g., First Flush" value={formData.flush || ""} onChange={(e) => setFormData({ ...formData, flush: e.target.value })} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card id="pricing-inventory" className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="font-heading text-lg">Pricing & Inventory</CardTitle>
+                <div className="text-sm text-muted-foreground">Set price, quantity and packaging.</div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="price" className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-muted-foreground" />Price (₹)</Label>
+                    <Input id="price" type="number" placeholder="e.g., 799" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} />
+                    {formErrors.price && <div className="text-yt-error text-xs mt-1">{formErrors.price}</div>}
+                  </div>
+                  <div>
+                    <Label htmlFor="quantity" className="flex items-center gap-2"><Boxes className="h-4 w-4 text-muted-foreground" />Quantity</Label>
+                    <Input id="quantity" placeholder="e.g., 100g" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="packaging" className="flex items-center gap-2"><Package className="h-4 w-4 text-muted-foreground" />Packaging</Label>
+                    <Input id="packaging" placeholder="e.g., Vacuum-sealed pouch" value={formData.packaging || ""} onChange={(e) => setFormData({ ...formData, packaging: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="offer" className="flex items-center gap-2"><BadgePercent className="h-4 w-4 text-muted-foreground" />Offer</Label>
+                    <Input id="offer" placeholder="e.g., 10% OFF" value={formData.offer || ""} onChange={(e) => setFormData({ ...formData, offer: e.target.value })} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card id="product-images" className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="font-heading text-lg">Product Images</CardTitle>
+                <div className="text-sm text-muted-foreground">Upload and manage product visuals.</div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div>
+                  <Label htmlFor="images" className="flex items-center gap-2"><ImageIcon className="h-4 w-4 text-muted-foreground" />Images</Label>
+                  <Input
+                    id="images"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => {
+                      const files = e.target.files ? Array.from(e.target.files) : [];
+                      setFormData((prev) => {
+                        const next = { ...prev, images: [...prev.images, ...files] };
+                        void draft.flushSaveWith(next);
+                        return next;
+                      });
+                    }}
+                  />
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {Array.isArray(formData.images) &&
+                      formData.images.length > 0 &&
+                      formData.images.map((img, idx) => (
+                        <div key={idx} className="relative w-20 h-20 group">
+                          <img
+                            src={typeof img === "string" ? img : URL.createObjectURL(img)}
+                            alt={`preview-${idx}`}
+                            className="w-20 h-20 object-cover rounded-lg border border-border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(idx)}
+                            className="absolute -top-2 -right-2 bg-yt-error text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transition-colors opacity-0 group-hover:opacity-100"
+                            title="Remove image"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="video_url" className="flex items-center gap-2"><Video className="h-4 w-4 text-muted-foreground" />Product Video URL</Label>
+                    <Input id="video_url" placeholder="e.g., https://youtu.be/abc123" value={formData.scan_to_brew?.video_url || ""} onChange={(e) => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, video_url: e.target.value } })} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card id="description" className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="font-heading text-lg">Description</CardTitle>
+                <div className="text-sm text-muted-foreground">Write a clear, premium product story.</div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div>
+                  <Label htmlFor="description" className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" />Product Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="e.g., Handpicked whole leaf tea with floral aroma and smooth finish."
+                    value={formData.description || ""}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="min-h-32"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card id="tags-seo" className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="font-heading text-lg">Tags & SEO</CardTitle>
+                <div className="text-sm text-muted-foreground">Improve search and discovery.</div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="tags" className="flex items-center gap-2"><Hash className="h-4 w-4 text-muted-foreground" />Tags (comma separated)</Label>
+                    <Input id="tags" placeholder="e.g., premium, darjeeling, loose-leaf" value={Array.isArray(formData.tags) ? formData.tags.join(", ") : ""} onChange={(e) => setFormData({ ...formData, tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="badges" className="flex items-center gap-2"><Star className="h-4 w-4 text-muted-foreground" />Badges (comma separated)</Label>
+                    <Input id="badges" placeholder="e.g., Bestseller, New Arrival" value={Array.isArray(formData.badges) ? formData.badges.join(", ") : ""} onChange={(e) => setFormData({ ...formData, badges: e.target.value.split(",").map((b) => b.trim()).filter(Boolean) })} />
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="taste_notes" className="flex items-center gap-2"><Sprout className="h-4 w-4 text-muted-foreground" />Taste Notes (comma separated)</Label>
+                    <Input id="taste_notes" placeholder="e.g., floral, muscatel, honey" value={Array.isArray(formData.taste_notes) ? formData.taste_notes.join(", ") : ""} onChange={(e) => setFormData({ ...formData, taste_notes: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })} />
+                  </div>
+                  <div />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card id="publish-settings" className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="font-heading text-lg">Publish Settings</CardTitle>
+                <div className="text-sm text-muted-foreground">Finalize and publish.</div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="gift_included" className="flex items-center gap-2"><Gift className="h-4 w-4 text-muted-foreground" />Gift Included</Label>
+                    <Select value={formData.gift_included || "No"} onValueChange={(value) => setFormData({ ...formData, gift_included: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="No">No</SelectItem>
+                        <SelectItem value="Yes">Yes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="qr_code" className="flex items-center gap-2"><QrCode className="h-4 w-4 text-muted-foreground" />QR Code URL</Label>
+                    <Input id="qr_code" placeholder="e.g., https://yellowtea.in/brew/darjeeling-first-flush" value={formData.qr_code || ""} onChange={(e) => setFormData({ ...formData, qr_code: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="rating" className="flex items-center gap-2"><Star className="h-4 w-4 text-muted-foreground" />Rating</Label>
+                    <Input id="rating" type="number" placeholder="e.g., 4.8" value={formData.rating} onChange={(e) => setFormData({ ...formData, rating: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div>
+                    <Label htmlFor="reviewCount" className="flex items-center gap-2"><Hash className="h-4 w-4 text-muted-foreground" />Review Count</Label>
+                    <Input id="reviewCount" type="number" placeholder="e.g., 128" value={formData.reviewCount} onChange={(e) => setFormData({ ...formData, reviewCount: parseInt(e.target.value) || 0 })} />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-card p-5 space-y-5">
+                  <div className="text-sm font-heading text-foreground">Origin</div>
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="origin-garden" className="flex items-center gap-2"><Leaf className="h-4 w-4 text-muted-foreground" />Garden Name</Label>
+                      <Input id="origin-garden" placeholder="e.g., Margaret's Hope" value={formData.origin.garden_name || ""} onChange={(e) => setFormData({ ...formData, origin: { ...formData.origin, garden_name: e.target.value } })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="origin-elevation" className="flex items-center gap-2"><Mountain className="h-4 w-4 text-muted-foreground" />Elevation (ft)</Label>
+                      <Input id="origin-elevation" type="number" placeholder="e.g., 6200" value={formData.origin.elevation_ft || ""} onChange={(e) => setFormData({ ...formData, origin: { ...formData.origin, elevation_ft: e.target.value } })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="origin-harvest" className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-muted-foreground" />Harvest Date</Label>
+                      <Input id="origin-harvest" type="date" value={formData.origin.harvest_date || ""} onChange={(e) => setFormData({ ...formData, origin: { ...formData.origin, harvest_date: e.target.value } })} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-card p-5 space-y-5">
+                  <div className="text-sm font-heading text-foreground">Brewing</div>
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="brewing-temp" className="flex items-center gap-2"><Thermometer className="h-4 w-4 text-muted-foreground" />Temperature (°C)</Label>
+                      <Input id="brewing-temp" type="number" placeholder="e.g., 85" value={formData.brewing.temperature_c || ""} onChange={(e) => setFormData({ ...formData, brewing: { ...formData.brewing, temperature_c: e.target.value } })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="brewing-time" className="flex items-center gap-2"><Timer className="h-4 w-4 text-muted-foreground" />Time (min)</Label>
+                      <Input id="brewing-time" type="number" placeholder="e.g., 3" value={formData.brewing.time_min || ""} onChange={(e) => setFormData({ ...formData, brewing: { ...formData.brewing, time_min: e.target.value } })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="brewing-method" className="flex items-center gap-2"><Coffee className="h-4 w-4 text-muted-foreground" />Method</Label>
+                      <Input id="brewing-method" placeholder="e.g., Western Style" value={formData.brewing.method || ""} onChange={(e) => setFormData({ ...formData, brewing: { ...formData.brewing, method: e.target.value } })} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-card p-5 space-y-5">
+                  <div className="text-sm font-heading text-foreground">Scan to Brew</div>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="scan-video" className="flex items-center gap-2"><Video className="h-4 w-4 text-muted-foreground" />Video URL</Label>
+                      <Input id="scan-video" placeholder="e.g., https://youtu.be/xyz789" value={formData.scan_to_brew.video_url || ""} onChange={(e) => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, video_url: e.target.value } })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="scan-steps" className="flex items-center gap-2"><List className="h-4 w-4 text-muted-foreground" />Steps (comma separated)</Label>
+                      <Input id="scan-steps" placeholder="e.g., Warm cup, Add 2g leaves, Steep 3 min" value={Array.isArray(formData.scan_to_brew.steps) ? formData.scan_to_brew.steps.join(", ") : ""} onChange={(e) => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, steps: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="scan-timer" className="flex items-center gap-2"><Timer className="h-4 w-4 text-muted-foreground" />Timer (seconds)</Label>
+                      <Input id="scan-timer" type="number" placeholder="e.g., 180" value={formData.scan_to_brew.timer_seconds || ""} onChange={(e) => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, timer_seconds: e.target.value } })} />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="hidden lg:block sticky top-[9.5rem]">
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="font-heading text-base">Quick Navigation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                {productEditorSections.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      activeEditorSectionId === s.id ? "bg-yt-yellow/15 text-yt-text" : "hover:bg-yt-yellow/10 text-muted-foreground hover:text-yt-text"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Dialog open={draft.isRecoveryOpen} onOpenChange={(open) => (open ? draft.openRecovery() : draft.closeRecovery())}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Restore your draft?</DialogTitle>
+            </DialogHeader>
+            <div className="text-sm text-muted-foreground">
+              {draft.recoveryInfo
+                ? `An unsaved draft was found (${draft.recoveryInfo.source}, ${draft.recoveryInfo.updatedAt.toLocaleString()}). Restore it or discard it.`
+                : "An unsaved draft was found. Restore it or discard it."}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => void draft.discardDraft()} disabled={formLoading}>
+                Discard
+              </Button>
+              <Button onClick={() => void draft.restoreLatestDraft()} disabled={formLoading}>
+                Restore
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -1165,410 +1652,6 @@ const AdminProducts: React.FC = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Add Product Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={handleCloseAddDialog}>
-        <DialogContent className="max-w-5xl max-h-[95vh] flex flex-col overflow-y-auto p-16">
-          <DialogHeader className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 pb-2 ">
-            <DialogTitle>Add New Product</DialogTitle>
-            <DialogDescription>Fill out the form to add a new product.</DialogDescription>
-            <div className="flex items-center gap-2 mt-4">
-              <div className={`flex-1 h-2 rounded-full ${currentStep >= 1 ? 'bg-green-500' : 'bg-gray-200'}`}></div>
-              <div className={`flex-1 h-2 rounded-full ${currentStep >= 2 ? 'bg-green-500' : 'bg-gray-200'}`}></div>
-              <div className={`flex-1 h-2 rounded-full ${currentStep >= 3 ? 'bg-green-500' : 'bg-gray-200'}`}></div>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span className={currentStep === 1 ? 'font-bold text-green-700' : 'text-gray-400'}>Basic Info</span>
-              <span className={currentStep === 2 ? 'font-bold text-green-700' : 'text-gray-400'}>Details</span>
-              <span className={currentStep === 3 ? 'font-bold text-green-700' : 'text-gray-400'}>Advanced</span>
-            </div>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 h-[80vh] overflow-y-auto py-4 px-1">
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Product Name</Label>
-                    <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-                    {formErrors.name && <div className="text-red-500 text-xs mt-1">{formErrors.name}</div>}
-                  </div>
-                  <div>
-                    <Label htmlFor="category">Category</Label>
-                    <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Trial Pack">Trial Pack</SelectItem>
-                        <SelectItem value="Gift Box">Gift Box</SelectItem>
-                        <SelectItem value="Full Size">Full Size</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {formErrors.category && <div className="text-red-500 text-xs mt-1">{formErrors.category}</div>}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="subtitle">Subtitle</Label>
-                    <Input id="subtitle" value={formData.subtitle} onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="offer">Offer</Label>
-                    <Input id="offer" value={formData.offer || ''} onChange={(e) => setFormData({ ...formData, offer: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="badges">Badges (comma separated)</Label>
-                    <Input id="badges" value={Array.isArray(formData.badges) ? formData.badges.join(', ') : ''} onChange={(e) => setFormData({ ...formData, badges: e.target.value.split(',').map(b => b.trim()).filter(Boolean) })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="price">Price (₹)</Label>
-                    <Input id="price" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} />
-                    {formErrors.price && <div className="text-red-500 text-xs mt-1">{formErrors.price}</div>}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="quantity">Quantity</Label>
-                    <Input id="quantity" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="packaging">Packaging</Label>
-                    <Input id="packaging" value={formData.packaging || ''} onChange={(e) => setFormData({ ...formData, packaging: e.target.value })} />
-                  </div>
-                </div>
-              </div>
-            )}
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="type">Type (comma separated)</Label>
-                    <Input id="type" value={Array.isArray(formData.type) ? formData.type.join(', ') : ''} onChange={(e) => setFormData({ ...formData, type: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="tags">Tags (comma separated)</Label>
-                    <Input id="tags" value={Array.isArray(formData.tags) ? formData.tags.join(', ') : ''} onChange={(e) => setFormData({ ...formData, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="taste_notes">Taste Notes (comma separated)</Label>
-                    <Input id="taste_notes" value={Array.isArray(formData.taste_notes) ? formData.taste_notes.join(', ') : ''} onChange={(e) => setFormData({ ...formData, taste_notes: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="region">Region</Label>
-                    <Input id="region" value={formData.region || ''} onChange={(e) => setFormData({ ...formData, region: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="flush">Flush</Label>
-                    <Input id="flush" value={formData.flush || ''} onChange={(e) => setFormData({ ...formData, flush: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="images">Images</Label>
-                    <Input id="images" type="file" multiple accept="image/*" onChange={e => {
-                      const files = e.target.files ? Array.from(e.target.files) : [];
-                      setFormData({ ...formData, images: [...formData.images, ...files] });
-                    }} />
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {Array.isArray(formData.images) && formData.images.length > 0 && formData.images.map((img, idx) => (
-                        <div key={idx} className="relative w-16 h-16 group">
-                          <img
-                            src={typeof img === 'string' ? img : URL.createObjectURL(img)}
-                            alt={`preview-${idx}`}
-                            className="w-16 h-16 object-cover rounded border"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(idx)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Remove image"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="video_url">Product Video URL</Label>
-                    <Input id="video_url" value={formData.scan_to_brew?.video_url || ''} onChange={(e) => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, video_url: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="qr_code">QR Code URL</Label>
-                    <Input id="qr_code" value={formData.qr_code || ''} onChange={(e) => setFormData({ ...formData, qr_code: e.target.value })} />
-                  </div>
-                </div>
-              </div>
-            )}
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <div className="font-bold text-lg border-b pb-2">Origin</div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="origin-garden">Garden Name</Label>
-                    <Input id="origin-garden" value={formData.origin.garden_name || ''} onChange={e => setFormData({ ...formData, origin: { ...formData.origin, garden_name: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="origin-elevation">Elevation (ft)</Label>
-                    <Input id="origin-elevation" type="number" value={formData.origin.elevation_ft || ''} onChange={e => setFormData({ ...formData, origin: { ...formData.origin, elevation_ft: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="origin-harvest">Harvest Date</Label>
-                    <Input id="origin-harvest" type="date" value={formData.origin.harvest_date || ''} onChange={e => setFormData({ ...formData, origin: { ...formData.origin, harvest_date: e.target.value } })} />
-                  </div>
-                </div>
-                <div className="font-bold text-lg border-b pb-2 mt-6">Brewing</div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="brewing-temp">Temperature (°C)</Label>
-                    <Input id="brewing-temp" type="number" value={formData.brewing.temperature_c || ''} onChange={e => setFormData({ ...formData, brewing: { ...formData.brewing, temperature_c: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="brewing-time">Time (min)</Label>
-                    <Input id="brewing-time" type="number" value={formData.brewing.time_min || ''} onChange={e => setFormData({ ...formData, brewing: { ...formData.brewing, time_min: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="brewing-method">Method</Label>
-                    <Input id="brewing-method" value={formData.brewing.method || ''} onChange={e => setFormData({ ...formData, brewing: { ...formData.brewing, method: e.target.value } })} />
-                  </div>
-                </div>
-                <div className="font-bold text-lg border-b pb-2 mt-6">Scan to Brew</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="scan-video">Video URL</Label>
-                    <Input id="scan-video" value={formData.scan_to_brew.video_url || ''} onChange={e => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, video_url: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="scan-steps">Steps (comma separated)</Label>
-                    <Input id="scan-steps" value={Array.isArray(formData.scan_to_brew.steps) ? formData.scan_to_brew.steps.join(', ') : ''} onChange={e => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, steps: e.target.value.split(',').map(s => s.trim()).filter(Boolean) } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="scan-timer">Timer (seconds)</Label>
-                    <Input id="scan-timer" type="number" value={formData.scan_to_brew.timer_seconds || ''} onChange={e => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, timer_seconds: e.target.value } })} />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="sticky bottom-0 z-10 bg-white/95 dark:bg-gray-900/95 pt-4 flex justify-between gap-2 border-t mt-2">
-            <Button variant="outline" onClick={handleCloseAddDialog} disabled={formLoading}>Cancel</Button>
-            {currentStep > 1 && <Button variant="outline" onClick={() => handlePrevStep(false)} disabled={formLoading}>Back</Button>}
-            {currentStep < 3 ? (
-              <Button onClick={() => handleNextStep(false)} disabled={formLoading}>Next</Button>
-            ) : (
-              <Button onClick={handleAddProductSubmit} disabled={formLoading}>{formLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Add Product</Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Product Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={handleCloseEditDialog}>
-        <DialogContent className="max-w-5xl max-h-[95vh] flex flex-col overflow-y-auto p-16">
-          <DialogHeader className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 pb-2">
-            <DialogTitle>Edit Product</DialogTitle>
-            <DialogDescription>Update the product details below and save your changes.</DialogDescription>
-            <div className="flex items-center gap-2 mt-4">
-              <div className={`flex-1 h-2 rounded-full ${currentStep >= 1 ? 'bg-green-500' : 'bg-gray-200'}`}></div>
-              <div className={`flex-1 h-2 rounded-full ${currentStep >= 2 ? 'bg-green-500' : 'bg-gray-200'}`}></div>
-              <div className={`flex-1 h-2 rounded-full ${currentStep >= 3 ? 'bg-green-500' : 'bg-gray-200'}`}></div>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span className={currentStep === 1 ? 'font-bold text-green-700' : 'text-gray-400'}>Basic Info</span>
-              <span className={currentStep === 2 ? 'font-bold text-green-700' : 'text-gray-400'}>Details</span>
-              <span className={currentStep === 3 ? 'font-bold text-green-700' : 'text-gray-400'}>Advanced</span>
-            </div>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 h-[80vh] overflow-y-auto py-4 px-1">
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-name">Product Name</Label>
-                    <Input id="edit-name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-                    {formErrors.name && <div className="text-red-500 text-xs mt-1">{formErrors.name}</div>}
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-category">Category</Label>
-                    <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Trial Pack">Trial Pack</SelectItem>
-                        <SelectItem value="Gift Box">Gift Box</SelectItem>
-                        <SelectItem value="Full Size">Full Size</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {formErrors.category && <div className="text-red-500 text-xs mt-1">{formErrors.category}</div>}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-subtitle">Subtitle</Label>
-                    <Input id="edit-subtitle" value={formData.subtitle} onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-offer">Offer</Label>
-                    <Input id="edit-offer" value={formData.offer || ''} onChange={(e) => setFormData({ ...formData, offer: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-badges">Badges (comma separated)</Label>
-                    <Input id="edit-badges" value={Array.isArray(formData.badges) ? formData.badges.join(', ') : ''} onChange={(e) => setFormData({ ...formData, badges: e.target.value.split(',').map(b => b.trim()).filter(Boolean) })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-price">Price (₹)</Label>
-                    <Input id="edit-price" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} />
-                    {formErrors.price && <div className="text-red-500 text-xs mt-1">{formErrors.price}</div>}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-quantity">Quantity</Label>
-                    <Input id="edit-quantity" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-packaging">Packaging</Label>
-                    <Input id="edit-packaging" value={formData.packaging || ''} onChange={(e) => setFormData({ ...formData, packaging: e.target.value })} />
-                  </div>
-                </div>
-              </div>
-            )}
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-type">Type (comma separated)</Label>
-                    <Input id="edit-type" value={Array.isArray(formData.type) ? formData.type.join(', ') : ''} onChange={(e) => setFormData({ ...formData, type: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-tags">Tags (comma separated)</Label>
-                    <Input id="edit-tags" value={Array.isArray(formData.tags) ? formData.tags.join(', ') : ''} onChange={(e) => setFormData({ ...formData, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-taste_notes">Taste Notes (comma separated)</Label>
-                    <Input id="edit-taste_notes" value={Array.isArray(formData.taste_notes) ? formData.taste_notes.join(', ') : ''} onChange={(e) => setFormData({ ...formData, taste_notes: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-region">Region</Label>
-                    <Input id="edit-region" value={formData.region || ''} onChange={(e) => setFormData({ ...formData, region: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-flush">Flush</Label>
-                    <Input id="edit-flush" value={formData.flush || ''} onChange={(e) => setFormData({ ...formData, flush: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-images">Images</Label>
-                    <Input id="edit-images" type="file" multiple accept="image/*" onChange={e => {
-                      const files = e.target.files ? Array.from(e.target.files) : [];
-                      setFormData({ ...formData, images: [...formData.images, ...files] });
-                    }} />
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {Array.isArray(formData.images) && formData.images.length > 0 && formData.images.map((img, idx) => (
-                        <div key={idx} className="relative w-16 h-16 group">
-                          <img
-                            src={typeof img === 'string' ? img : URL.createObjectURL(img)}
-                            alt={`preview-${idx}`}
-                            className="w-16 h-16 object-cover rounded border"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(idx)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Remove image"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-video_url">Product Video URL</Label>
-                    <Input id="edit-video_url" value={formData.scan_to_brew?.video_url || ''} onChange={(e) => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, video_url: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-qr_code">QR Code URL</Label>
-                    <Input id="edit-qr_code" value={formData.qr_code || ''} onChange={(e) => setFormData({ ...formData, qr_code: e.target.value })} />
-                  </div>
-                </div>
-              </div>
-            )}
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <div className="font-bold text-lg border-b pb-2">Origin</div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="edit-origin-garden">Garden Name</Label>
-                    <Input id="edit-origin-garden" value={formData.origin.garden_name || ''} onChange={e => setFormData({ ...formData, origin: { ...formData.origin, garden_name: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-origin-elevation">Elevation (ft)</Label>
-                    <Input id="edit-origin-elevation" type="number" value={formData.origin.elevation_ft || ''} onChange={e => setFormData({ ...formData, origin: { ...formData.origin, elevation_ft: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-origin-harvest">Harvest Date</Label>
-                    <Input id="edit-origin-harvest" type="date" value={formData.origin.harvest_date || ''} onChange={e => setFormData({ ...formData, origin: { ...formData.origin, harvest_date: e.target.value } })} />
-                  </div>
-                </div>
-                <div className="font-bold text-lg border-b pb-2 mt-6">Brewing</div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="edit-brewing-temp">Temperature (°C)</Label>
-                    <Input id="edit-brewing-temp" type="number" value={formData.brewing.temperature_c || ''} onChange={e => setFormData({ ...formData, brewing: { ...formData.brewing, temperature_c: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-brewing-time">Time (min)</Label>
-                    <Input id="edit-brewing-time" type="number" value={formData.brewing.time_min || ''} onChange={e => setFormData({ ...formData, brewing: { ...formData.brewing, time_min: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-brewing-method">Method</Label>
-                    <Input id="edit-brewing-method" value={formData.brewing.method || ''} onChange={e => setFormData({ ...formData, brewing: { ...formData.brewing, method: e.target.value } })} />
-                  </div>
-                </div>
-                <div className="font-bold text-lg border-b pb-2 mt-6">Scan to Brew</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-scan-video">Video URL</Label>
-                    <Input id="edit-scan-video" value={formData.scan_to_brew.video_url || ''} onChange={e => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, video_url: e.target.value } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-scan-steps">Steps (comma separated)</Label>
-                    <Input id="edit-scan-steps" value={Array.isArray(formData.scan_to_brew.steps) ? formData.scan_to_brew.steps.join(', ') : ''} onChange={e => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, steps: e.target.value.split(',').map(s => s.trim()).filter(Boolean) } })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-scan-timer">Timer (seconds)</Label>
-                    <Input id="edit-scan-timer" type="number" value={formData.scan_to_brew.timer_seconds || ''} onChange={e => setFormData({ ...formData, scan_to_brew: { ...formData.scan_to_brew, timer_seconds: e.target.value } })} />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="sticky bottom-0 z-10 bg-white/95 dark:bg-gray-900/95 pt-4 flex justify-between gap-2 border-t mt-2">
-            <Button variant="outline" onClick={handleCloseEditDialog} disabled={formLoading}>Cancel</Button>
-            {currentStep > 1 && <Button variant="outline" onClick={() => handlePrevStep(true)} disabled={formLoading}>Back</Button>}
-            {currentStep < 3 ? (
-              <Button onClick={() => handleNextStep(true)} disabled={formLoading}>Next</Button>
-            ) : (
-              <Button onClick={handleEditProductSubmit} disabled={formLoading}>{formLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Update Product</Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Product Details Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>

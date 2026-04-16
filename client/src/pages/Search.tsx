@@ -32,7 +32,7 @@ const Search = () => {
 
   // Filter and search logic
   const filteredProducts = useMemo(() => {
-    let filtered = products.filter((product) => {
+    const filtered = products.filter((product) => {
       // Search term filter
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();

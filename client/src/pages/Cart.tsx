@@ -167,10 +167,9 @@ const Cart = () => {
         const courierData = res.data.data as ShiprocketServiceabilityData;
         setDeliveryOptions(courierData.available_courier_companies || []);
         // Pick recommended or first courier
-        let recommendedId = courierData.recommended_courier_company_id;
-        recommendedId = typeof recommendedId === 'number' ? recommendedId : null;
-        let firstCourier = courierData.available_courier_companies?.[0] || null;
-        let recommended = courierData.available_courier_companies.find(
+        const recommendedId = typeof courierData.recommended_courier_company_id === 'number' ? courierData.recommended_courier_company_id : null;
+        const firstCourier = courierData.available_courier_companies?.[0] || null;
+        const recommended = courierData.available_courier_companies.find(
           (c: ShiprocketCourierCompany) => c.courier_company_id === recommendedId
         ) || firstCourier;
         setSelectedCourier(recommended || null);

@@ -22,6 +22,9 @@ import {
     updateProduct,
     deleteProduct,
     getProductStats,
+    getDraftProduct,
+    saveDraftProduct,
+    deleteDraftProduct,
     
     // Logs
     getAdminLogs,
@@ -84,6 +87,13 @@ router.route('/products/:id')
     .get(getProductById)
     .put(uploadMultiplePhotos, updateProduct)
     .delete(deleteProduct);
+
+router.route('/draft-products')
+    .get(getDraftProduct)
+    .post(saveDraftProduct);
+
+router.route('/draft-products/:id')
+    .delete(deleteDraftProduct);
 
 // ==================== LOGS ====================
 router.get('/logs', getAdminLogs);

@@ -13,7 +13,7 @@ interface Log {
   admin?: string;
   timestamp?: string;
   created_at?: string;
-  details?: any;
+  details?: unknown;
   message?: string;
   level?: string;
   ip?: string;

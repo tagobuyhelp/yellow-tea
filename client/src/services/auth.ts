@@ -194,7 +194,7 @@ export const userAPI = {
     },
 
     // Email Preferences
-    updateEmailPreferences: async (token: string, preferences: any) => {
+    updateEmailPreferences: async (token: string, preferences: Record<string, unknown>) => {
         const res = await fetch(`${USER_BASE}/email-preferences`, {
             method: 'PUT',
             headers: {

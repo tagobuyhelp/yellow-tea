@@ -92,10 +92,14 @@ export const authValidation = {
 // Error handling utilities
 export const authErrorHandler = {
   // Handle common authentication errors
-  handle: (error: any, options?: { 
+  handle: (error: { 
+    response?: { status?: number; data?: { message?: string; errors?: unknown } }; 
+    request?: unknown; 
+    message?: string; 
+  }, options?: { 
     onUnauthorized?: () => void;
     onForbidden?: () => void;
-    onValidation?: (errors: any) => void;
+    onValidation?: (errors: unknown) => void;
     onNetwork?: () => void;
   }) => {
     const {
@@ -139,7 +143,7 @@ export const authErrorHandler = {
   },
 
   // Get user-friendly error message
-  getMessage: (error: any): string => {
+  getMessage: (error: { response?: { status?: number; data?: { message?: string } }; message?: string }): string => {
     if (error.response?.data?.message) {
       return error.response.data.message;
     }

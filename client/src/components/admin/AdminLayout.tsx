@@ -1,32 +1,35 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Users, 
-  Package, 
-  ShoppingCart, 
-  BarChart3, 
+import {
+  Users,
+  Package,
+  ShoppingCart,
+  BarChart3,
   Settings,
   Home,
-  Bell,
-  Search,
-  Moon,
-  Sun,
   Menu,
   X,
-  LogOut
+  LogOut,
+  ChevronDown,
+  Bell
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import adminAPI from "@/services/admin";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 const AdminLayout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("yt:adminDarkMode") === "true");
   const [newOrderCount, setNewOrderCount] = useState(0);
 
   const isActive = (path: string) => location.pathname === path;
@@ -53,17 +56,35 @@ const AdminLayout: React.FC = () => {
     fetchNewOrderCount();
   }, []);
 
-  const sidebarItems = [
+  useEffect(() => {
+    localStorage.setItem("yt:adminDarkMode", String(darkMode));
+  }, [darkMode]);
+
+  const pageTitle = useMemo(() => {
+    const pathname = location.pathname;
+    if (pathname === "/admin") return "Dashboard";
+    if (pathname.startsWith("/admin/products")) return "Products";
+    if (pathname.startsWith("/admin/orders")) return "Orders";
+    if (pathname.startsWith("/admin/customers")) return "Customers";
+    if (pathname.startsWith("/admin/settings")) return "Settings";
+    if (pathname.startsWith("/admin/logs")) return "Logs";
+    return "Admin";
+  }, [location.pathname]);
+
+  const primaryNav = [
     { to: "/admin", label: "Dashboard", icon: BarChart3 },
-    { to: "/admin/customers", label: "Customers", icon: Users },
-    { to: "/admin/orders", label: "Orders", icon: ShoppingCart, badge: newOrderCount.toString() },
     { to: "/admin/products", label: "Products", icon: Package },
-    { to: "/admin/logs", label: "Logs", icon: Bell },
+    { to: "/admin/orders", label: "Orders", icon: ShoppingCart, badge: newOrderCount.toString() },
+    { to: "/admin/customers", label: "Customers", icon: Users },
+  ];
+
+  const secondaryNav = [
     { to: "/admin/settings", label: "Settings", icon: Settings },
+    { to: "/admin/logs", label: "Logs", icon: Bell },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className={`min-h-screen flex font-sans admin-theme ${darkMode ? "dark" : ""}`}>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -74,148 +95,145 @@ const AdminLayout: React.FC = () => {
 
       {/* Sidebar */}
       <aside className={`
-        sticky top-0 left-0 z-40 w-64 bg-gradient-to-b from-white via-gray-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 shadow-xl border-r border-gray-200 dark:border-gray-700 transition-transform duration-300 ease-in-out h-screen flex flex-col
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        fixed top-0 left-0 z-40 w-64 h-screen bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out flex flex-col
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} 
       `}>
-        <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">YT</span>
-              </div>
-              <span className="text-lg font-semibold text-gray-900 dark:text-white">Yellow Tea</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+        <div className="flex items-center justify-between px-5 py-5 border-b border-sidebar-border">
+          <Link to="/admin" className="flex items-center gap-3">
+            <img
+              src="/uploads/logos/YellowTeaLogoPng.png"
+              alt="Yellow Tea"
+              className="h-32 w-auto object-contain"
+              loading="eager"
+            />
+          </Link>
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(false)}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3 py-5">
+          <div className="space-y-1">
+            {primaryNav.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`group relative flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                    active
+                      ? "bg-yt-yellow/15 text-yt-text"
+                      : "text-sidebar-foreground hover:bg-yt-yellow/10"
+                  }`}
+                >
+                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r ${active ? "bg-yt-yellow" : "bg-transparent"}`} />
+                  <span className="flex items-center gap-3">
+                    <Icon className={`h-5 w-5 ${active ? "text-yt-text" : "text-muted-foreground group-hover:text-yt-text"}`} />
+                    <span className={active ? "font-semibold" : "font-medium"}>{item.label}</span>
+                  </span>
+                  {item.badge && item.badge !== "0" && (
+                    <Badge className="bg-yt-yellow text-yt-text border-0">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </Link>
+              );
+            })}
           </div>
 
-          {/* Sidebar Navigation */}
-          <nav className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="px-3 py-6 space-y-1">
-              {sidebarItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className={`
-                      flex items-center justify-between px-4 py-2 rounded-lg font-medium transition-all duration-200 group
-                      ${isActive(item.to)
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200 shadow-sm'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-gray-700 hover:shadow'
-                      }
-                    `}
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className={`inline-flex items-center justify-center h-8 w-8 rounded-md transition-all duration-200 group-hover:bg-green-200/60 ${isActive(item.to) ? 'bg-green-200/80 text-green-800' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <span>{item.label}</span>
-                    </div>
-                    {item.badge && (
-                      <Badge variant="secondary" className="bg-red-100 text-red-600 text-xs">
-                        {item.badge}
-                      </Badge>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
-
-          {/* Sidebar Footer - User Info */}
-          <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gradient-to-t from-white/90 via-white/80 to-transparent dark:from-gray-900/90 dark:via-gray-900/80">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {user?.name?.charAt(0) || 'A'}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {user?.name || 'Admin'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {user?.email || 'admin@yellowtea.in'}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={logout}
-                  className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
+          <div className="mt-6 border-t border-sidebar-border pt-4 space-y-1">
+            {secondaryNav.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`group relative flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                    active
+                      ? "bg-yt-yellow/15 text-yt-text"
+                      : "text-sidebar-foreground hover:bg-yt-yellow/10"
+                  }`}
                 >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </CardContent>
-            </Card>
+                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r ${active ? "bg-yt-yellow" : "bg-transparent"}`} />
+                  <span className="flex items-center gap-3">
+                    <Icon className={`h-5 w-5 ${active ? "text-yt-text" : "text-muted-foreground group-hover:text-yt-text"}`} />
+                    <span className={active ? "font-semibold" : "font-medium"}>{item.label}</span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+
+        <div className="border-t border-sidebar-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-full bg-yt-yellow/20 flex items-center justify-center text-yt-text font-semibold">
+              {user?.name?.charAt(0) || "A"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-sidebar-foreground">{user?.name || "Admin"}</div>
+              <div className="truncate text-xs text-muted-foreground">{user?.email || "admin@yellowtea.in"}</div>
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col lg:ml-0 min-h-screen">
-        {/* Top header */}
-        <header className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 shadow-md border-b border-gray-200 dark:border-gray-700 flex-shrink-0 backdrop-blur-md">
-          <div className="flex items-center justify-between h-16 px-6">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(true)}
-              >
+      <div className="flex-1 min-h-screen lg:pl-64">
+        <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border">
+          <div className="h-16 px-4 lg:px-8 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
                 <Menu className="h-5 w-5" />
               </Button>
-              
-              <div className="hidden md:block">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search..."
-                    className="pl-10 w-80"
-                  />
-                </div>
+              <div className="flex flex-col">
+                <div className="text-lg font-heading text-foreground leading-none">{pageTitle}</div>
+                <div className="text-xs text-muted-foreground leading-none mt-1">Yellow Tea Admin</div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm">
-                <Bell className="h-5 w-5" />
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setDarkMode(!darkMode)}
-              >
-                {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-              </Button>
-
-              <Link to="/" className="hidden sm:block">
-                <Button variant="outline" size="sm">
-                  <Home className="h-4 w-4 mr-2" />
-                  View Site
-                </Button>
-              </Link>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="bg-card">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-7 w-7 rounded-full bg-yt-yellow/20 flex items-center justify-center text-yt-text font-semibold text-xs">
+                        {user?.name?.charAt(0) || "A"}
+                      </span>
+                      <span className="hidden sm:inline-flex flex-col items-start leading-none">
+                        <span className="text-sm font-semibold text-foreground">{user?.name || "Admin"}</span>
+                        <span className="text-xs text-muted-foreground">{user?.email || "admin@yellowtea.in"}</span>
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem asChild>
+                    <Link to="/" className="flex items-center">
+                      <Home className="h-4 w-4 mr-2" />
+                      View Site
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDarkMode((v) => !v)}>
+                    Toggle Dark Mode
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="text-yt-error focus:text-yt-error">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-900">
+        <main className="min-h-[calc(100vh-4rem)] p-4 lg:p-8 bg-background">
           <Outlet />
         </main>
       </div>

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
 	darkMode: ["class"],
@@ -22,6 +23,7 @@ export default {
 				'sans': ['Inter', 'system-ui', 'sans-serif'],
 				'serif': ['Playfair Display', 'Georgia', 'serif'],
 				'display': ['Poppins', 'Inter', 'sans-serif'],
+				'heading': ['Poppins', 'Inter', 'system-ui', 'sans-serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -66,7 +68,17 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				yt: {
+					yellow: '#F4B400',
+					'yellow-hover': '#FFD54F',
+					green: '#2F6B3A',
+					bg: '#FFF8E6',
+					border: '#E5E7EB',
+					text: '#111111',
+					success: '#22C55E',
+					error: '#EF4444'
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -128,5 +140,5 @@ export default {
 			}
 		}
 	},
-	plugins: [require("tailwindcss-animate")],
+	plugins: [tailwindcssAnimate],
 } satisfies Config;

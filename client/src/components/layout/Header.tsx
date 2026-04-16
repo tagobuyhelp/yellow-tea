@@ -119,11 +119,11 @@ export function Header() {
               onClick={closeMobileMenu}
             >
               <img 
-                src="/uploads/site_logo_2.jpg" 
+                src="/uploads/logos/YellowTeaLogoPng.png" 
                 alt="Yellow Tea Logo" 
                 className="h-10 w-auto object-contain"
               />
-              <span className="font-bold text-xl text-foreground hidden sm:block">Yellow Tea</span>
+              <span className="font-medium font-display  text-2xl  text-foreground sm:block"> <span className="text-yellow-500"> Yellow </span> Tea </span>
             </Link>
 
             {/* Desktop Navigation */}

@@ -4,6 +4,7 @@ import Order from '../models/order.model.js';
 import Product from '../models/product.model.js';
 import User from '../models/user.model.js';
 import AdminLog from '../models/adminLog.model.js';
+import DraftProduct from '../models/draftProduct.model.js';
 import slugify from 'slugify';
 import uploadToCloudinary from '../utils/uploadToCloudinary.js';
 import { sendUserNotification } from '../utils/responseHandler.js';
@@ -433,8 +434,158 @@ export const getProductById = async (req, res, next) => {
     }
 };
 
+export const getDraftProduct = async (req, res, next) => {
+    try {
+        const { mode, productId } = req.query;
+
+        if (!mode || !['create', 'edit'].includes(String(mode))) {
+            return next(new ApiError(400, 'mode must be one of: create, edit'));
+        }
+
+        const filter = {
+            admin_id: req.user.id,
+            mode: String(mode),
+            product_id: mode === 'edit' ? productId : null
+        };
+
+        if (mode === 'edit' && (!productId || !mongoose.Types.ObjectId.isValid(String(productId)))) {
+            return next(new ApiError(400, 'productId is required for edit mode and must be a valid ObjectId'));
+        }
+
+        const draft = await DraftProduct.findOne(filter).sort({ updated_at: -1 });
+
+        res.status(200).json(new ApiResponse(200, draft, 'Draft product retrieved successfully'));
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const saveDraftProduct = async (req, res, next) => {
+    try {
+        const { mode, productId, data, clientId, revision, updatedAt } = req.body;
+
+        if (!mode || !['create', 'edit'].includes(String(mode))) {
+            return next(new ApiError(400, 'mode must be one of: create, edit'));
+        }
+
+        if (mode === 'edit' && (!productId || !mongoose.Types.ObjectId.isValid(String(productId)))) {
+            return next(new ApiError(400, 'productId is required for edit mode and must be a valid ObjectId'));
+        }
+
+        if (!data || typeof data !== 'object') {
+            return next(new ApiError(400, 'data must be an object'));
+        }
+
+        const incomingRevision = typeof revision === 'number' ? revision : Number(revision) || 0;
+        const incomingUpdatedAt = updatedAt ? new Date(updatedAt) : new Date();
+
+        if (Number.isNaN(incomingUpdatedAt.getTime())) {
+            return next(new ApiError(400, 'updatedAt must be a valid date'));
+        }
+
+        const filter = {
+            admin_id: req.user.id,
+            mode: String(mode),
+            product_id: mode === 'edit' ? String(productId) : null
+        };
+
+        const existing = await DraftProduct.findOne(filter).select('_id revision updated_at');
+        if (existing && incomingRevision < existing.revision) {
+            const latest = await DraftProduct.findById(existing._id);
+            return res.status(409).json(new ApiResponse(409, latest, 'Draft conflict: newer draft exists'));
+        }
+
+        const doc = await DraftProduct.findOneAndUpdate(
+            filter,
+            {
+                data,
+                client_id: clientId || null,
+                revision: incomingRevision,
+                updated_at: incomingUpdatedAt
+            },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+
+        res.status(200).json(new ApiResponse(200, doc, 'Draft product saved successfully'));
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteDraftProduct = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(String(id))) {
+            return next(new ApiError(400, 'Invalid draft ID'));
+        }
+
+        const deleted = await DraftProduct.findOneAndDelete({ _id: id, admin_id: req.user.id });
+        if (!deleted) return next(new ApiError(404, 'Draft not found'));
+
+        res.status(200).json(new ApiResponse(200, null, 'Draft deleted successfully'));
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const createProduct = async (req, res, next) => {
     try {
+        const tryParseJson = (value) => {
+            if (typeof value !== 'string') return value;
+            try {
+                return JSON.parse(value);
+            } catch {
+                return value;
+            }
+        };
+
+        const jsonFields = ['type', 'badges', 'taste_notes', 'tags', 'images', 'origin', 'brewing', 'scan_to_brew'];
+        for (const field of jsonFields) {
+            if (req.body[field] != null) {
+                req.body[field] = tryParseJson(req.body[field]);
+            }
+        }
+
+        if (req.body.price != null && typeof req.body.price === 'string' && req.body.price.trim() !== '') {
+            const num = Number(req.body.price);
+            if (!Number.isNaN(num)) req.body.price = num;
+        }
+        if (req.body.rating != null && typeof req.body.rating === 'string' && req.body.rating.trim() !== '') {
+            const num = Number(req.body.rating);
+            if (!Number.isNaN(num)) req.body.rating = num;
+        }
+        if (req.body.reviewCount != null && typeof req.body.reviewCount === 'string' && req.body.reviewCount.trim() !== '') {
+            const num = Number(req.body.reviewCount);
+            if (!Number.isNaN(num)) req.body.reviewCount = num;
+        }
+        if (req.body.origin && typeof req.body.origin === 'object') {
+            if (req.body.origin.elevation_ft != null && typeof req.body.origin.elevation_ft === 'string' && req.body.origin.elevation_ft.trim() !== '') {
+                const num = Number(req.body.origin.elevation_ft);
+                if (!Number.isNaN(num)) req.body.origin.elevation_ft = num;
+            }
+            if (req.body.origin.harvest_date != null && typeof req.body.origin.harvest_date === 'string' && req.body.origin.harvest_date.trim() !== '') {
+                const date = new Date(req.body.origin.harvest_date);
+                if (!Number.isNaN(date.getTime())) req.body.origin.harvest_date = date;
+            }
+        }
+        if (req.body.brewing && typeof req.body.brewing === 'object') {
+            if (req.body.brewing.temperature_c != null && typeof req.body.brewing.temperature_c === 'string' && req.body.brewing.temperature_c.trim() !== '') {
+                const num = Number(req.body.brewing.temperature_c);
+                if (!Number.isNaN(num)) req.body.brewing.temperature_c = num;
+            }
+            if (req.body.brewing.time_min != null && typeof req.body.brewing.time_min === 'string' && req.body.brewing.time_min.trim() !== '') {
+                const num = Number(req.body.brewing.time_min);
+                if (!Number.isNaN(num)) req.body.brewing.time_min = num;
+            }
+        }
+        if (req.body.scan_to_brew && typeof req.body.scan_to_brew === 'object') {
+            if (req.body.scan_to_brew.timer_seconds != null && typeof req.body.scan_to_brew.timer_seconds === 'string' && req.body.scan_to_brew.timer_seconds.trim() !== '') {
+                const num = Number(req.body.scan_to_brew.timer_seconds);
+                if (!Number.isNaN(num)) req.body.scan_to_brew.timer_seconds = num;
+            }
+        }
+
         const { name } = req.body;
 
         const existingProduct = await Product.findOne({ name });
@@ -484,6 +635,22 @@ export const updateProduct = async (req, res, next) => {
                 filename: f.filename,
                 path: f.path
             })));
+        }
+
+        const tryParseJson = (value) => {
+            if (typeof value !== 'string') return value;
+            try {
+                return JSON.parse(value);
+            } catch {
+                return value;
+            }
+        };
+
+        const jsonFields = ['type', 'badges', 'taste_notes', 'tags', 'images', 'origin', 'brewing', 'scan_to_brew'];
+        for (const field of jsonFields) {
+            if (updateData[field] != null) {
+                updateData[field] = tryParseJson(updateData[field]);
+            }
         }
 
         // Comprehensive data sanitization

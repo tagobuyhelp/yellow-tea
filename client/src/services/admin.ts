@@ -83,13 +83,25 @@ const adminAPI = {
     return res.data;
   },
   updateProduct: async (id, data) => {
-    const res = await adminAxios.put(`/products/${id}`, data, {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const isFormData = data instanceof FormData;
+    const headers = isFormData ? {} : { 'Content-Type': 'application/json' };
+    const res = await adminAxios.put(`/products/${id}`, data, { headers });
     return res.data;
   },
   deleteProduct: async (id) => {
     const res = await adminAxios.delete(`/products/${id}`);
+    return res.data;
+  },
+  getDraftProduct: async (params: { mode: 'create' | 'edit'; productId?: string } ) => {
+    const res = await adminAxios.get('/draft-products', { params });
+    return res.data;
+  },
+  saveDraftProduct: async (data: { mode: 'create' | 'edit'; productId?: string; data: unknown; clientId?: string; revision: number; updatedAt: string }) => {
+    const res = await adminAxios.post('/draft-products', data, { headers: { 'Content-Type': 'application/json' } });
+    return res.data;
+  },
+  deleteDraftProduct: async (id: string) => {
+    const res = await adminAxios.delete(`/draft-products/${id}`);
     return res.data;
   },
   getProductStats: async () => {
