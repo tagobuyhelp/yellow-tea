@@ -24,7 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { PageTransition } from "@/components/motion";
 
 const AdminLayout: React.FC = () => {
   const location = useLocation();
@@ -123,13 +122,13 @@ const AdminLayout: React.FC = () => {
                   key={item.to}
                   to={item.to}
                   onClick={() => setSidebarOpen(false)}
-                  className={`group relative flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors duration-200 ease-out hover:translate-x-[1px] ${
+                  className={`group relative flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors ${
                     active
                       ? "bg-yt-yellow/15 text-yt-text"
                       : "text-sidebar-foreground hover:bg-yt-yellow/10"
                   }`}
                 >
-                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r transition-colors duration-200 ${active ? "bg-yt-yellow" : "bg-transparent"}`} />
+                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r ${active ? "bg-yt-yellow" : "bg-transparent"}`} />
                   <span className="flex items-center gap-3">
                     <Icon className={`h-5 w-5 ${active ? "text-yt-text" : "text-muted-foreground group-hover:text-yt-text"}`} />
                     <span className={active ? "font-semibold" : "font-medium"}>{item.label}</span>
@@ -153,13 +152,13 @@ const AdminLayout: React.FC = () => {
                   key={item.to}
                   to={item.to}
                   onClick={() => setSidebarOpen(false)}
-                  className={`group relative flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors duration-200 ease-out hover:translate-x-[1px] ${
+                  className={`group relative flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors ${
                     active
                       ? "bg-yt-yellow/15 text-yt-text"
                       : "text-sidebar-foreground hover:bg-yt-yellow/10"
                   }`}
                 >
-                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r transition-colors duration-200 ${active ? "bg-yt-yellow" : "bg-transparent"}`} />
+                  <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r ${active ? "bg-yt-yellow" : "bg-transparent"}`} />
                   <span className="flex items-center gap-3">
                     <Icon className={`h-5 w-5 ${active ? "text-yt-text" : "text-muted-foreground group-hover:text-yt-text"}`} />
                     <span className={active ? "font-semibold" : "font-medium"}>{item.label}</span>
@@ -235,9 +234,7 @@ const AdminLayout: React.FC = () => {
         </header>
 
         <main className="min-h-[calc(100vh-4rem)] p-4 lg:p-8 bg-background">
-          <PageTransition routeKey={location.pathname}>
-            <Outlet />
-          </PageTransition>
+          <Outlet />
         </main>
       </div>
     </div>

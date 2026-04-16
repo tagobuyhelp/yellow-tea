@@ -1,89 +1,88 @@
+import { Leaf, Truck, ShieldCheck, Heart } from "lucide-react";
+import { motion } from "framer-motion";
 
-import { Leaf, Shield, Globe, Heart } from "lucide-react";
+const features = [
+  {
+    icon: Leaf,
+    title: "100% Whole Leaf Tea",
+    desc: "No dust or fannings — only full leaves for richer flavor and aroma.",
+  },
+  {
+    icon: Truck,
+    title: "Garden to Cup in Days",
+    desc: "Sourced fresh and delivered within 8–10 days for peak quality.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Pure & Unblended",
+    desc: "No artificial flavors, additives, or fillers — just authentic tea.",
+  },
+  {
+    icon: Heart,
+    title: "Ethically Sourced",
+    desc: "Direct partnerships supporting tea farmers and sustainable practices.",
+  },
+];
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
 
 const WhyYellowTea = () => {
-  const features = [
-    {
-      icon: Leaf,
-      title: "Freshness You Can Taste",
-      description: "Vacuum-sealed at source and delivered within days of harvest",
-      color: "text-green-600 bg-green-100"
-    },
-    {
-      icon: Shield,
-      title: "100% Pure, No Dust, No Fillers",
-      description: "Only whole leaf teas, carefully selected and processed",
-      color: "text-blue-600 bg-blue-100"
-    },
-    {
-      icon: Globe,
-      title: "Delivered Worldwide in 10 Days",
-      description: "Express delivery ensures maximum freshness globally",
-      color: "text-amber-600 bg-amber-100"
-    },
-    {
-      icon: Heart,
-      title: "Ethically Sourced & Transparent",
-      description: "Direct trade relationships supporting tea garden communities",
-      color: "text-red-600 bg-red-100"
-    }
-  ];
-
   return (
-    <section className="spacing-mobile bg-gradient-to-b from-green-50 to-white">
-      <div className="max-w-6xl mx-auto container-mobile">
+    <section className="py-20 md:py-28 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
         {/* Header */}
-        <div className="text-center mb-8 md:mb-16">
-          <h2 className="text-responsive-2xl font-display font-bold text-gray-800 mb-3 md:mb-4">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <h2 className="text-3xl md:text-4xl font-heading font-semibold text-gray-900 mb-4">
             Why Choose Yellow Tea?
           </h2>
-          <p className="text-responsive-base text-gray-600 max-w-2xl mx-auto">
-            Discover what makes our tea different from garden to cup
+          <p className="text-gray-600 text-lg">
+            Authentic, fresh, and responsibly sourced — experience tea the way it should be.
           </p>
         </div>
-        
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-          {features.map((feature, index) => (
-            <div 
-              key={index}
-              className="group text-center p-4 md:p-6 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100"
-            >
-              {/* Icon */}
-              <div className={`inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full mb-4 md:mb-6 transition-all duration-300 group-hover:scale-110 ${feature.color}`}>
-                <feature.icon className="h-6 w-6 md:h-8 md:w-8" />
-              </div>
-              
-              {/* Content */}
-              <h3 className="text-responsive-lg font-display font-semibold text-gray-800 mb-2 md:mb-4 leading-tight">
-                {feature.title}
-              </h3>
-              <p className="text-responsive-sm text-gray-600 leading-relaxed">
-                {feature.description}
-              </p>
-            </div>
-          ))}
+
+        {/* Features */}
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true }}
+          transition={{ staggerChildren: 0.12 }}
+          className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
+          {features.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <motion.div
+                key={i}
+                variants={fadeUp}
+                className="group bg-[#FFF8E6] rounded-xl p-6 text-center hover:shadow-md transition transform hover:-translate-y-1"
+              >
+                <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center rounded-full bg-white shadow-sm">
+                  <Icon className="w-6 h-6 text-[#F4B400]" />
+                </div>
+
+                <h3 className="font-semibold text-gray-900 mb-2">
+                  {item.title}
+                </h3>
+
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {item.desc}
+                </p>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
+        {/* CTA */}
+        <div className="text-center mt-14">
+          <button className="bg-[#F4B400] text-black px-6 py-3 rounded-lg font-medium hover:bg-[#FFD54F] transition">
+            Explore Collection
+          </button>
         </div>
 
-        {/* Bottom Stats */}
-        <div className="mt-12 md:mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 bg-white/60 backdrop-blur-sm rounded-2xl p-6 md:p-8">
-          <div className="text-center">
-            <div className="text-xl md:text-3xl font-bold text-green-600 font-display">2500+</div>
-            <div className="text-responsive-xs text-gray-600 font-medium">Farmers Supported</div>
-          </div>
-          <div className="text-center">
-            <div className="text-xl md:text-3xl font-bold text-amber-600 font-display">100%</div>
-            <div className="text-responsive-xs text-gray-600 font-medium">Whole Leaf</div>
-          </div>
-          <div className="text-center">
-            <div className="text-xl md:text-3xl font-bold text-blue-600 font-display">8-10</div>
-            <div className="text-responsive-xs text-gray-600 font-medium">Days Delivery</div>
-          </div>
-          <div className="text-center">
-            <div className="text-xl md:text-3xl font-bold text-red-500 font-display">50K+</div>
-            <div className="text-responsive-xs text-gray-600 font-medium">Happy Customers</div>
-          </div>
-        </div>
       </div>
     </section>
   );

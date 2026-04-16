@@ -110,7 +110,7 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 bg-white supports-[backdrop-filter]:bg-background/95">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 sm:w-[1250px]">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <Link 

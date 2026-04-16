@@ -134,30 +134,6 @@
     font-family: Poppins, Inter, system-ui, sans-serif;
   }
 
-  .admin-theme main button {
-    transition-property: transform;
-    transition-duration: 180ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .admin-theme main button:hover {
-    transform: translateZ(0) scale(1.02);
-  }
-
-  .admin-theme main button:active {
-    transform: translateZ(0) scale(0.98);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .admin-theme main button {
-      transition: none;
-    }
-    .admin-theme main button:hover,
-    .admin-theme main button:active {
-      transform: none;
-    }
-  }
-
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;

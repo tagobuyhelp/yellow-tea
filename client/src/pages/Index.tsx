@@ -25,7 +25,8 @@ const Index = () => {
   });
 
   return (
-    <div className="min-h-screen pb-20 bg-gray-50">
+    <div className="min-h-screen pb-20 ">
+      
       <Header />
       
       {/* Hero Section */}
