@@ -160,15 +160,19 @@ const AdminDashboard: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const colors = {
-      pending: "bg-yellow-100 text-yellow-800",
-      completed: "bg-green-100 text-green-800",
-      delivered: "bg-blue-100 text-blue-800",
+    const normalized = (status || '').toLowerCase();
+
+    const styles: Record<string, string> = {
+      pending: "bg-yt-yellow/15 text-yt-text border-yt-yellow/30",
+      processing: "bg-yt-info/10 text-yt-info border-yt-info/20",
+      completed: "bg-yt-success/10 text-yt-success border-yt-success/20",
+      delivered: "bg-yt-success/10 text-yt-success border-yt-success/20",
+      cancelled: "bg-yt-error/10 text-yt-error border-yt-error/20",
     };
-    
+
     return (
-      <Badge className={colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800"}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <Badge variant="outline" className={styles[normalized] || "bg-muted text-muted-foreground border-border"}>
+        {normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : "Unknown"}
       </Badge>
     );
   };
@@ -186,34 +190,27 @@ const AdminDashboard: React.FC = () => {
       : [];
 
   return (
-    <div className="space-y-8 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-heading font-semibold text-foreground leading-tight">Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Store overview, recent activity, and key performance signals.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-right">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent mb-2">
-              Dashboard
-            </h1>
-            <p className="text-gray-600 text-lg">Welcome back! Here's what's happening with your store.</p>
+            <div className="text-xs text-muted-foreground">Last updated</div>
+            <div className="text-sm font-medium text-foreground">{new Date().toLocaleTimeString()}</div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Last updated</p>
-              <p className="text-sm font-medium text-gray-700">
-                {new Date().toLocaleTimeString()}
-              </p>
-            </div>
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-          </div>
+          <div className="h-2.5 w-2.5 rounded-full bg-yt-success/80" />
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div 
-          onClick={() => navigate('/admin/customers')}
-          className="cursor-pointer transform transition-all duration-300 hover:scale-105"
-        >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <button onClick={() => navigate('/admin/customers')} className="text-left">
           <StatsCard
             title="Total Customers"
             value={stats.totalCustomers.toLocaleString()}
@@ -221,13 +218,10 @@ const AdminDashboard: React.FC = () => {
             changeType="positive"
             icon={Users}
             loading={loading}
-            className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 p-6 transition-all duration-300 hover:shadow-xl hover:scale-105 border border-gray-100 dark:border-gray-700"
+            className="rounded-xl hover:shadow-md transition-shadow"
           />
-        </div>
-        <div 
-          onClick={() => navigate('/admin/products')}
-          className="cursor-pointer transform transition-all duration-300 hover:scale-105"
-        >
+        </button>
+        <button onClick={() => navigate('/admin/products')} className="text-left">
           <StatsCard
             title="Total Products"
             value={stats.totalProducts}
@@ -235,13 +229,10 @@ const AdminDashboard: React.FC = () => {
             changeType="positive"
             icon={Package}
             loading={loading}
-            className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 p-6 transition-all duration-300 hover:shadow-xl hover:scale-105 border border-gray-100 dark:border-gray-700"
+            className="rounded-xl hover:shadow-md transition-shadow"
           />
-        </div>
-        <div 
-          onClick={() => navigate('/admin/orders')}
-          className="cursor-pointer transform transition-all duration-300 hover:scale-105"
-        >
+        </button>
+        <button onClick={() => navigate('/admin/orders')} className="text-left">
           <StatsCard
             title="Total Orders"
             value={stats.totalOrders.toLocaleString()}
@@ -249,13 +240,10 @@ const AdminDashboard: React.FC = () => {
             changeType="positive"
             icon={ShoppingCart}
             loading={loading}
-            className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 p-6 transition-all duration-300 hover:shadow-xl hover:scale-105 border border-gray-100 dark:border-gray-700"
+            className="rounded-xl hover:shadow-md transition-shadow"
           />
-        </div>
-        <div 
-          onClick={() => navigate('/admin/orders')}
-          className="cursor-pointer transform transition-all duration-300 hover:scale-105"
-        >
+        </button>
+        <button onClick={() => navigate('/admin/orders')} className="text-left">
           <StatsCard
             title="Total Revenue"
             value={formatCurrency(stats.totalRevenue)}
@@ -263,46 +251,46 @@ const AdminDashboard: React.FC = () => {
             changeType="positive"
             icon={DollarSign}
             loading={loading}
-            className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 p-6 transition-all duration-300 hover:shadow-xl hover:scale-105 border border-gray-100 dark:border-gray-700"
+            className="rounded-xl hover:shadow-md transition-shadow"
           />
-        </div>
+        </button>
       </div>
 
       {/* Quick Actions and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
         <div className="lg:col-span-1">
-          <Card className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 rounded-t-2xl">
-              <CardTitle className="flex items-center space-x-2 text-green-800 dark:text-green-200">
+          <Card className="rounded-xl shadow-sm">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="flex items-center space-x-2 font-heading text-base text-foreground">
                 <Settings className="h-5 w-5" />
                 <span>Quick Actions</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 p-6">
+            <CardContent className="space-y-3">
               <Link to="/admin/products">
-                <Button className="w-full justify-start h-12 text-left px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                <Button className="w-full justify-start h-11 text-left px-4">
                   <Plus className="h-5 w-5 mr-3" />
                   <div>
                     <div className="font-semibold">Add New Product</div>
-                    <div className="text-xs opacity-90">Create a new product listing</div>
+                    <div className="text-xs text-yt-text-secondary">Create a new product listing</div>
                   </div>
                 </Button>
               </Link>
               <Link to="/admin/orders">
-                <Button className="w-full justify-start h-12 text-left px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                <Button variant="outline" className="w-full justify-start h-11 text-left px-4">
                   <Eye className="h-5 w-5 mr-3" />
                   <div>
                     <div className="font-semibold">View Recent Orders</div>
-                    <div className="text-xs opacity-90">Check latest order status</div>
+                    <div className="text-xs text-yt-text-secondary">Check latest order status</div>
                   </div>
                 </Button>
               </Link>
-              <Button className="w-full justify-start h-12 text-left px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+              <Button variant="outline" className="w-full justify-start h-11 text-left px-4">
                 <TrendingUp className="h-5 w-5 mr-3" />
                 <div>
                   <div className="font-semibold">View Analytics</div>
-                  <div className="text-xs opacity-90">Detailed performance metrics</div>
+                  <div className="text-xs text-yt-text-secondary">Detailed performance metrics</div>
                 </div>
               </Button>
             </CardContent>
@@ -313,15 +301,12 @@ const AdminDashboard: React.FC = () => {
         <div className="lg:col-span-2">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Recent Orders Table */}
-            <Card className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700">
-              <CardHeader 
-                className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-t-2xl cursor-pointer"
-                onClick={() => navigate('/admin/orders')}
-              >
-                <CardTitle className="flex items-center space-x-2 text-blue-800 dark:text-blue-200">
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader className="border-b border-border cursor-pointer" onClick={() => navigate('/admin/orders')}>
+                <CardTitle className="flex items-center space-x-2 font-heading text-base text-foreground">
                   <ShoppingCart className="h-5 w-5" />
                   <span>Recent Orders</span>
-                  <span className="text-xs opacity-70">(Click to view all)</span>
+                  <span className="text-xs text-muted-foreground">(Click to view all)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -329,12 +314,12 @@ const AdminDashboard: React.FC = () => {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 text-blue-800 dark:text-blue-200">
-                          <th className="text-left p-4 font-semibold">Order #</th>
-                          <th className="text-left p-4 font-semibold">Customer</th>
-                          <th className="text-left p-4 font-semibold">Status</th>
-                          <th className="text-left p-4 font-semibold">Total</th>
-                          <th className="text-left p-4 font-semibold">Date</th>
+                        <tr className="bg-muted/40 text-muted-foreground">
+                          <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Order</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Customer</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Status</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Total</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Date</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -342,40 +327,37 @@ const AdminDashboard: React.FC = () => {
                           <tr 
                             key={order._id} 
                             onClick={() => navigate(`/admin/orders`)}
-                            className={`transition-all duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer ${idx % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-900"}`}
+                            className={`transition-colors hover:bg-muted/40 cursor-pointer ${idx !== recentOrders.length - 1 ? "border-b border-border" : ""}`}
                           >
-                            <td className="p-4 font-medium text-blue-600 dark:text-blue-400">{order.orderNumber}</td>
-                            <td className="p-4">
-                              <div className="font-medium">{order.user?.name}</div>
-                              <div className="text-xs text-gray-500">{order.user?.email}</div>
+                            <td className="px-4 py-3 font-medium text-yt-info">{order.orderNumber}</td>
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-foreground">{order.user?.name}</div>
+                              <div className="text-xs text-muted-foreground">{order.user?.email}</div>
                             </td>
-                            <td className="p-4">{order.status && getStatusBadge(order.status)}</td>
-                            <td className="p-4 font-semibold text-green-600 dark:text-green-400">{formatCurrency(order.totalPrice as number)}</td>
-                            <td className="p-4 text-sm text-gray-600 dark:text-gray-400">{order.created_at ? new Date(order.created_at).toLocaleDateString() : ''}</td>
+                            <td className="px-4 py-3">{order.status && getStatusBadge(order.status)}</td>
+                            <td className="px-4 py-3 font-semibold text-foreground">{formatCurrency(order.totalPrice as number)}</td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleDateString() : ''}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No recent orders</h3>
-                    <p className="text-gray-500">Orders will appear here once they are placed.</p>
+                  <div className="text-center py-10">
+                    <ShoppingCart className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="text-base font-heading font-medium text-foreground mb-1">No recent orders</h3>
+                    <p className="text-sm text-muted-foreground">Orders will appear here once they are placed.</p>
                   </div>
                 )}
               </CardContent>
             </Card>
             {/* Recent Users Table */}
-            <Card className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700">
-              <CardHeader 
-                className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 rounded-t-2xl cursor-pointer"
-                onClick={() => navigate('/admin/customers')}
-              >
-                <CardTitle className="flex items-center space-x-2 text-purple-800 dark:text-purple-200">
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader className="border-b border-border cursor-pointer" onClick={() => navigate('/admin/customers')}>
+                <CardTitle className="flex items-center space-x-2 font-heading text-base text-foreground">
                   <Users className="h-5 w-5" />
                   <span>Recent Customers</span>
-                  <span className="text-xs opacity-70">(Click to view all)</span>
+                  <span className="text-xs text-muted-foreground">(Click to view all)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -383,10 +365,10 @@ const AdminDashboard: React.FC = () => {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 text-purple-800 dark:text-purple-200">
-                          <th className="text-left p-4 font-semibold">Name</th>
-                          <th className="text-left p-4 font-semibold">Email</th>
-                          <th className="text-left p-4 font-semibold">Joined</th>
+                        <tr className="bg-muted/40 text-muted-foreground">
+                          <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Name</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Email</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Joined</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -394,21 +376,21 @@ const AdminDashboard: React.FC = () => {
                           <tr 
                             key={user._id} 
                             onClick={() => navigate(`/admin/customers`)}
-                            className={`transition-all duration-200 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer ${idx % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-900"}`}
+                            className={`transition-colors hover:bg-muted/40 cursor-pointer ${idx !== recentUsers.length - 1 ? "border-b border-border" : ""}`}
                           >
-                            <td className="p-4 font-medium text-purple-600 dark:text-purple-400">{user.name}</td>
-                            <td className="p-4 text-gray-600 dark:text-gray-400">{user.email}</td>
-                            <td className="p-4 text-sm text-gray-600 dark:text-gray-400">{user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</td>
+                            <td className="px-4 py-3 font-medium text-foreground">{user.name}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground">{user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No recent customers</h3>
-                    <p className="text-gray-500">New customer registrations will appear here.</p>
+                  <div className="text-center py-10">
+                    <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="text-base font-heading font-medium text-foreground mb-1">No recent customers</h3>
+                    <p className="text-sm text-muted-foreground">New customer registrations will appear here.</p>
                   </div>
                 )}
               </CardContent>
@@ -418,63 +400,57 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Analytics Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Top Products */}
-        <Card className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700">
-          <CardHeader 
-            className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900 dark:to-orange-800 rounded-t-2xl cursor-pointer"
-            onClick={() => navigate('/admin/products')}
-          >
-            <CardTitle className="flex items-center space-x-2 text-orange-800 dark:text-orange-200">
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="border-b border-border cursor-pointer" onClick={() => navigate('/admin/products')}>
+            <CardTitle className="flex items-center space-x-2 font-heading text-base text-foreground">
               <Package className="h-5 w-5" />
               <span>Top Performing Products</span>
-              <span className="text-xs opacity-70">(Click to view all)</span>
+              <span className="text-xs text-muted-foreground">(Click to view all)</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="space-y-4">
             <div className="space-y-4">
               {analytics?.topProducts && Array.isArray(analytics.topProducts) && analytics.topProducts.length > 0 ? (
                 (analytics.topProducts as TopProduct[]).map((product, index) => (
                   <div 
                     key={index} 
                     onClick={() => navigate('/admin/products')}
-                    className="flex justify-between items-center p-4 bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl hover:from-orange-100 hover:to-orange-200 dark:hover:from-orange-900/30 dark:hover:to-orange-800/30 transition-all duration-300 border border-orange-200 dark:border-orange-700 cursor-pointer"
+                    className="flex justify-between items-center p-4 bg-muted/30 rounded-xl hover:bg-muted/40 transition-colors border border-border cursor-pointer"
                   >
                     <div>
-                      <span className="text-sm font-semibold text-orange-800 dark:text-orange-200">{product.name}</span>
-                      <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">Sold: {product.totalSold ?? '-'}</div>
+                      <span className="text-sm font-semibold text-foreground">{product.name}</span>
+                      <div className="text-xs text-muted-foreground font-medium">Sold: {product.totalSold ?? '-'}</div>
                     </div>
-                    <span className="font-bold text-orange-800 dark:text-orange-200">{formatCurrency(product.revenue)}</span>
+                    <span className="font-bold text-foreground">{formatCurrency(product.revenue)}</span>
                   </div>
                 ))
               ) : (
                 <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No product data</h3>
-                  <p className="text-gray-500">Product performance metrics will appear here.</p>
+                  <Package className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="text-base font-heading font-medium text-foreground mb-1">No product data</h3>
+                  <p className="text-sm text-muted-foreground">Product performance metrics will appear here.</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
         {/* Monthly Stats and Order Status Distribution */}
-        <Card className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700">
-          <CardHeader 
-            className="bg-gradient-to-r from-teal-50 to-teal-100 dark:from-teal-900 dark:to-teal-800 rounded-t-2xl cursor-pointer"
-            onClick={() => navigate('/admin/orders')}
-          >
-            <CardTitle className="flex items-center space-x-2 text-teal-800 dark:text-teal-200">
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="border-b border-border cursor-pointer" onClick={() => navigate('/admin/orders')}>
+            <CardTitle className="flex items-center space-x-2 font-heading text-base text-foreground">
               <TrendingUp className="h-5 w-5" />
               <span>Monthly Stats & Order Status</span>
-              <span className="text-xs opacity-70">(Click to view all)</span>
+              <span className="text-xs text-muted-foreground">(Click to view all)</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="space-y-6">
             <div className="space-y-6">
               {/* Monthly Stats */}
               <div>
-                <h4 className="font-semibold mb-3 text-teal-800 dark:text-teal-200 flex items-center">
-                  <TrendingUp className="h-4 w-4 mr-2" />
+                <h4 className="font-heading font-medium mb-3 text-foreground flex items-center">
+                  <TrendingUp className="h-4 w-4 mr-2 text-muted-foreground" />
                   Monthly Orders & Revenue
                 </h4>
                 {analytics?.monthlyStats && Array.isArray(analytics.monthlyStats) && analytics.monthlyStats.length > 0 ? (
@@ -483,29 +459,29 @@ const AdminDashboard: React.FC = () => {
                       <div 
                         key={idx} 
                         onClick={() => navigate('/admin/orders')}
-                        className="flex justify-between items-center p-3 bg-gradient-to-r from-teal-50 to-teal-100 dark:from-teal-900/20 dark:to-teal-800/20 rounded-lg border border-teal-200 dark:border-teal-700 cursor-pointer hover:from-teal-100 hover:to-teal-200 dark:hover:from-teal-900/30 dark:hover:to-teal-800/30 transition-all duration-300"
+                        className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border border-border cursor-pointer hover:bg-muted/40 transition-colors"
                       >
-                        <span className="text-sm font-medium text-teal-800 dark:text-teal-200">
+                        <span className="text-sm font-medium text-foreground">
                           {stat._id?.year}/{stat._id?.month}
                         </span>
                         <div className="text-right">
-                          <div className="text-sm font-semibold text-teal-800 dark:text-teal-200">{stat.orders} orders</div>
-                          <div className="text-xs text-teal-600 dark:text-teal-400">{formatCurrency(stat.revenue)}</div>
+                          <div className="text-sm font-semibold text-foreground">{stat.orders} orders</div>
+                          <div className="text-xs text-muted-foreground">{formatCurrency(stat.revenue)}</div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-4">
-                    <TrendingUp className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No monthly stats available</p>
+                    <TrendingUp className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground text-sm">No monthly stats available</p>
                   </div>
                 )}
               </div>
               {/* Order Status Distribution */}
               <div>
-                <h4 className="font-semibold mb-3 text-teal-800 dark:text-teal-200 flex items-center">
-                  <Activity className="h-4 w-4 mr-2" />
+                <h4 className="font-heading font-medium mb-3 text-foreground flex items-center">
+                  <Activity className="h-4 w-4 mr-2 text-muted-foreground" />
                   Order Status Distribution
                 </h4>
                 {analytics?.orderStatusDistribution && Array.isArray(analytics.orderStatusDistribution) && analytics.orderStatusDistribution.length > 0 ? (
@@ -514,19 +490,19 @@ const AdminDashboard: React.FC = () => {
                       <div 
                         key={idx} 
                         onClick={() => navigate('/admin/orders')}
-                        className="flex justify-between items-center p-3 bg-gradient-to-r from-teal-50 to-teal-100 dark:from-teal-900/20 dark:to-teal-800/20 rounded-lg border border-teal-200 dark:border-teal-700 cursor-pointer hover:from-teal-100 hover:to-teal-200 dark:hover:from-teal-900/30 dark:hover:to-teal-800/30 transition-all duration-300"
+                        className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border border-border cursor-pointer hover:bg-muted/40 transition-colors"
                       >
-                        <span className="text-sm font-medium text-teal-800 dark:text-teal-200 capitalize">
+                        <span className="text-sm font-medium text-foreground capitalize">
                           {status._id || 'Unknown'}
                         </span>
-                        <span className="text-sm font-bold text-teal-800 dark:text-teal-200">{status.count}</span>
+                        <span className="text-sm font-bold text-foreground">{status.count}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-4">
-                    <Activity className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">No order status data available</p>
+                    <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground text-sm">No order status data available</p>
                   </div>
                 )}
               </div>

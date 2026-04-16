@@ -215,17 +215,18 @@ const AdminOrders: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
+    const normalized = (status || '').toLowerCase();
     const colors = {
-      pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      processing: "bg-blue-100 text-blue-800 border-blue-200",
-      shipped: "bg-purple-100 text-purple-800 border-purple-200",
-      delivered: "bg-green-100 text-green-800 border-green-200",
-      cancelled: "bg-red-100 text-red-800 border-red-200",
-      refunded: "bg-gray-100 text-gray-800 border-gray-200",
+      pending: "bg-yt-yellow/15 text-yt-text border-yt-yellow/30",
+      processing: "bg-yt-info/10 text-yt-info border-yt-info/20",
+      shipped: "bg-yt-info/10 text-yt-info border-yt-info/20",
+      delivered: "bg-yt-success/10 text-yt-success border-yt-success/20",
+      cancelled: "bg-yt-error/10 text-yt-error border-yt-error/20",
+      refunded: "bg-muted text-muted-foreground border-border",
     };
     return (
-      <Badge className={`${colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800 border-gray-200"} border`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <Badge variant="outline" className={colors[normalized as keyof typeof colors] || "bg-muted text-muted-foreground border-border"}>
+        {normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : "Unknown"}
       </Badge>
     );
   };
@@ -355,92 +356,90 @@ const AdminOrders: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-            Order Management
-          </h1>
-          <p className="text-gray-600 mt-2">Manage and track all customer orders</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-semibold text-foreground">Order Management</h1>
+          <p className="text-muted-foreground mt-1">Manage and track all customer orders</p>
           
           {/* Order Statistics */}
           <div className="grid grid-cols-7 gap-2 mt-4">
-            <Card className="rounded-lg shadow-sm border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100">
+            <Card className="rounded-lg shadow-sm border border-border bg-card">
               <CardContent className="p-2 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <Clock className="h-4 w-4 text-yellow-600" />
+                  <Clock className="h-4 w-4 text-yt-yellow" />
                 </div>
-                <p className="text-lg font-bold text-yellow-700">{orderStats.pending}</p>
-                <p className="text-xs text-yellow-600 font-medium">Pending</p>
+                <p className="text-lg font-bold text-foreground">{orderStats.pending}</p>
+                <p className="text-xs text-muted-foreground font-medium">Pending</p>
               </CardContent>
             </Card>
             
-            <Card className="rounded-lg shadow-sm border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="rounded-lg shadow-sm border border-border bg-card">
               <CardContent className="p-2 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <Loader2 className="h-4 w-4 text-blue-600" />
+                  <Loader2 className="h-4 w-4 text-yt-info" />
                 </div>
-                <p className="text-lg font-bold text-blue-700">{orderStats.processing}</p>
-                <p className="text-xs text-blue-600 font-medium">Processing</p>
+                <p className="text-lg font-bold text-foreground">{orderStats.processing}</p>
+                <p className="text-xs text-muted-foreground font-medium">Processing</p>
               </CardContent>
             </Card>
             
-            <Card className="rounded-lg shadow-sm border border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100">
+            <Card className="rounded-lg shadow-sm border border-border bg-card">
               <CardContent className="p-2 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <Truck className="h-4 w-4 text-purple-600" />
+                  <Truck className="h-4 w-4 text-yt-info" />
                 </div>
-                <p className="text-lg font-bold text-purple-700">{orderStats.shipped}</p>
-                <p className="text-xs text-purple-600 font-medium">Shipped</p>
+                <p className="text-lg font-bold text-foreground">{orderStats.shipped}</p>
+                <p className="text-xs text-muted-foreground font-medium">Shipped</p>
               </CardContent>
             </Card>
             
-            <Card className="rounded-lg shadow-sm border border-green-200 bg-gradient-to-br from-green-50 to-green-100">
+            <Card className="rounded-lg shadow-sm border border-border bg-card">
               <CardContent className="p-2 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <CheckCircle className="h-4 w-4 text-yt-success" />
                 </div>
-                <p className="text-lg font-bold text-green-700">{orderStats.delivered}</p>
-                <p className="text-xs text-green-600 font-medium">Delivered</p>
+                <p className="text-lg font-bold text-foreground">{orderStats.delivered}</p>
+                <p className="text-xs text-muted-foreground font-medium">Delivered</p>
               </CardContent>
             </Card>
             
-            <Card className="rounded-lg shadow-sm border border-red-200 bg-gradient-to-br from-red-50 to-red-100">
+            <Card className="rounded-lg shadow-sm border border-border bg-card">
               <CardContent className="p-2 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <X className="h-4 w-4 text-red-600" />
+                  <X className="h-4 w-4 text-yt-error" />
                 </div>
-                <p className="text-lg font-bold text-red-700">{orderStats.cancelled}</p>
-                <p className="text-xs text-red-600 font-medium">Cancelled</p>
+                <p className="text-lg font-bold text-foreground">{orderStats.cancelled}</p>
+                <p className="text-xs text-muted-foreground font-medium">Cancelled</p>
               </CardContent>
             </Card>
             
-            <Card className="rounded-lg shadow-sm border border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100">
+            <Card className="rounded-lg shadow-sm border border-border bg-card">
               <CardContent className="p-2 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <AlertTriangle className="h-4 w-4 text-gray-600" />
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <p className="text-lg font-bold text-gray-700">{orderStats.refunded}</p>
-                <p className="text-xs text-gray-600 font-medium">Refunded</p>
+                <p className="text-lg font-bold text-foreground">{orderStats.refunded}</p>
+                <p className="text-xs text-muted-foreground font-medium">Refunded</p>
               </CardContent>
             </Card>
             
-            <Card className="rounded-lg shadow-sm border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="rounded-lg shadow-sm border border-border bg-card">
               <CardContent className="p-2 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <Package className="h-4 w-4 text-blue-600" />
+                  <Package className="h-4 w-4 text-foreground" />
                 </div>
-                <p className="text-lg font-bold text-blue-700">{orderStats.total}</p>
-                <p className="text-xs text-blue-600 font-medium">Total</p>
+                <p className="text-lg font-bold text-foreground">{orderStats.total}</p>
+                <p className="text-xs text-muted-foreground font-medium">Total</p>
               </CardContent>
             </Card>
           </div>
         </div>
         <div className="flex items-center space-x-4">
           <div className="text-right">
-            <p className="text-sm text-gray-500">Total Orders</p>
-            <p className="text-2xl font-bold text-blue-600">{orderStats.total}</p>
+            <p className="text-sm text-muted-foreground">Total Orders</p>
+            <p className="text-2xl font-bold text-foreground">{orderStats.total}</p>
           </div>
         </div>
       </div>
@@ -448,13 +447,13 @@ const AdminOrders: React.FC = () => {
 
 
       {/* Filters */}
-      <Card className="rounded-2xl shadow-lg border border-gray-200">
+      <Card className="rounded-xl shadow-sm">
         <CardContent className="pt-6">
           <div className="flex gap-4">
             <div className="flex-1">
-              <Label htmlFor="search" className="text-sm font-medium text-gray-700">Search Orders</Label>
+              <Label htmlFor="search" className="text-sm font-medium text-foreground">Search Orders</Label>
               <div className="relative mt-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
                   placeholder="Search by order number, customer name..."
@@ -463,14 +462,14 @@ const AdminOrders: React.FC = () => {
                 
                     setSearchTerm(e.target.value);
                   }}
-                  className="pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10"
                 />
               </div>
             </div>
             <div className="w-48">
-              <Label htmlFor="status" className="text-sm font-medium text-gray-700">Status Filter</Label>
+              <Label htmlFor="status" className="text-sm font-medium text-foreground">Status Filter</Label>
               <Select value={selectedStatus} onValueChange={handleStatusChange}>
-                <SelectTrigger className="mt-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                <SelectTrigger className="mt-1">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -494,16 +493,16 @@ const AdminOrders: React.FC = () => {
             open={expandedOrders.has(order._id)}
             onOpenChange={() => toggleOrderExpansion(order._id)}
           >
-            <Card className="rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300">
+            <Card className="rounded-xl shadow-sm border border-border hover:shadow-md transition-shadow">
               <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors duration-200">
+                <CardHeader className="cursor-pointer hover:bg-muted/40 transition-colors duration-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
                         {expandedOrders.has(order._id) ? (
-                          <ChevronDown className="h-5 w-5 text-gray-500" />
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
                         ) : (
-                          <ChevronRight className="h-5 w-5 text-gray-500" />
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         )}
                         <div className="flex items-center space-x-2">
                           {getStatusIcon(order.status)}
@@ -511,14 +510,14 @@ const AdminOrders: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">#{order.orderNumber}</h3>
-                        <p className="text-sm text-gray-500">{order.user?.name}</p>
+                        <h3 className="text-lg font-semibold text-foreground">#{order.orderNumber}</h3>
+                        <p className="text-sm text-muted-foreground">{order.user?.name}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
-                        <p className="text-lg font-bold text-green-600">{formatPrice(order.totalPrice)}</p>
-                        <p className="text-sm text-gray-500">{formatDate(order.createdAt || '')}</p>
+                        <p className="text-lg font-bold text-foreground">{formatPrice(order.totalPrice)}</p>
+                        <p className="text-sm text-muted-foreground">{formatDate(order.createdAt || '')}</p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
@@ -528,7 +527,6 @@ const AdminOrders: React.FC = () => {
                             e.stopPropagation();
                             handleViewOrderDetails(order);
                           }}
-                          className="border-gray-300 hover:border-blue-500 hover:bg-blue-50"
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           Details
@@ -540,7 +538,6 @@ const AdminOrders: React.FC = () => {
                             e.stopPropagation();
                             printInvoice(order);
                           }}
-                          className="border-gray-300 hover:border-green-500 hover:bg-green-50"
                         >
                           <Printer className="h-4 w-4 mr-1" />
                           Invoice
@@ -556,33 +553,33 @@ const AdminOrders: React.FC = () => {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Customer & Shipping Info */}
                     <div className="space-y-4">
-                      <Card className="border-gray-200">
+                      <Card className="border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center space-x-2">
-                            <User className="h-5 w-5 text-blue-600" />
+                          <CardTitle className="text-base font-heading flex items-center space-x-2">
+                            <User className="h-5 w-5 text-yt-info" />
                             <span>Customer Information</span>
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                           <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-gray-400" />
+                            <User className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">{order.user?.name}</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Mail className="h-4 w-4 text-gray-400" />
+                            <Mail className="h-4 w-4 text-muted-foreground" />
                             <span>{order.user?.email}</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Phone className="h-4 w-4 text-gray-400" />
+                            <Phone className="h-4 w-4 text-muted-foreground" />
                             <span>{order.shippingAddress?.phone || 'N/A'}</span>
                           </div>
                         </CardContent>
                       </Card>
 
-                      <Card className="border-gray-200">
+                      <Card className="border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center space-x-2">
-                            <MapPin className="h-5 w-5 text-green-600" />
+                          <CardTitle className="text-base font-heading flex items-center space-x-2">
+                            <MapPin className="h-5 w-5 text-yt-success" />
                             <span>Shipping Address</span>
                           </CardTitle>
                         </CardHeader>
@@ -596,10 +593,10 @@ const AdminOrders: React.FC = () => {
 
                     {/* Order Items */}
                     <div className="lg:col-span-2">
-                      <Card className="border-gray-200">
+                      <Card className="border-border">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center space-x-2">
-                            <ShoppingBag className="h-5 w-5 text-purple-600" />
+                          <CardTitle className="text-base font-heading flex items-center space-x-2">
+                            <ShoppingBag className="h-5 w-5 text-yt-info" />
                             <span>Order Items</span>
                           </CardTitle>
                         </CardHeader>

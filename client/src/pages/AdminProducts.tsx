@@ -1454,16 +1454,16 @@ const AdminProducts: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left p-3 font-semibold text-gray-700">
+                  <tr className="border-b bg-muted/40">
+                    <th className="text-left p-3 font-semibold text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
                         Product
                       </div>
                     </th>
-                    <th className="text-left p-3 font-semibold text-gray-700">
+                    <th className="text-left p-3 font-semibold text-muted-foreground">
                       <button 
-                        className="flex items-center gap-2 hover:text-blue-600 transition-colors"
+                        className="flex items-center gap-2 hover:text-yt-info transition-colors"
                         onClick={() => handleSort('category')}
                       >
                         <Tag className="h-4 w-4" />
@@ -1473,9 +1473,9 @@ const AdminProducts: React.FC = () => {
                         )}
                       </button>
                     </th>
-                    <th className="text-left p-3 font-semibold text-gray-700">
+                    <th className="text-left p-3 font-semibold text-muted-foreground">
                       <button 
-                        className="flex items-center gap-2 hover:text-blue-600 transition-colors"
+                        className="flex items-center gap-2 hover:text-yt-info transition-colors"
                         onClick={() => handleSort('price')}
                       >
                         <DollarSign className="h-4 w-4" />
@@ -1485,19 +1485,19 @@ const AdminProducts: React.FC = () => {
                         )}
                       </button>
                     </th>
-                    <th className="text-left p-3 font-semibold text-gray-700">
+                    <th className="text-left p-3 font-semibold text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Star className="h-4 w-4" />
                         Rating
                       </div>
                     </th>
-                    <th className="text-left p-3 font-semibold text-gray-700">
+                    <th className="text-left p-3 font-semibold text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <TrendingUp className="h-4 w-4" />
                         Status
                       </div>
                     </th>
-                    <th className="text-left p-3 font-semibold text-gray-700">
+                    <th className="text-left p-3 font-semibold text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <Edit className="h-4 w-4" />
                         Actions
@@ -1511,12 +1511,12 @@ const AdminProducts: React.FC = () => {
                       ? product.images[0]
                       : "/placeholder.svg";
                     return (
-                      <tr key={product._id || product.slug} className="border-b hover:bg-gray-50 transition-colors">
+                      <tr key={product._id || product.slug} className="border-b hover:bg-muted/40 transition-colors">
                         <td className="p-3">
                           <div className="flex items-center gap-3">
                             <img src={imageSrc} alt={product.name} className="w-12 h-12 object-cover rounded-lg shadow-sm" />
                             <div>
-                              <div className="font-semibold text-gray-900 flex items-center gap-2">
+                              <div className="font-semibold text-foreground flex items-center gap-2">
                                 {product.name}
                                 {Array.isArray(product.badges) && product.badges.length > 0 && (
                                   <Badge variant="secondary" className="text-xs">
@@ -1524,9 +1524,9 @@ const AdminProducts: React.FC = () => {
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">{product.subtitle}</div>
+                              <div className="text-xs text-muted-foreground mt-1">{product.subtitle}</div>
                               {product.offer && (
-                                <div className="text-xs text-orange-600 font-medium mt-1">{product.offer}</div>
+                                <div className="text-xs text-yt-yellow font-medium mt-1">{product.offer}</div>
                               )}
                             </div>
                           </div>

@@ -76,8 +76,10 @@ export default {
 					bg: '#FFF8E6',
 					border: '#E5E7EB',
 					text: '#111111',
+					'text-secondary': '#6B7280',
 					success: '#22C55E',
-					error: '#EF4444'
+					error: '#EF4444',
+					info: '#3B82F6'
 				},
 			},
 			borderRadius: {

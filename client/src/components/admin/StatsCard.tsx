@@ -24,11 +24,11 @@ const StatsCard: React.FC<StatsCardProps> = ({
   const getChangeColor = () => {
     switch (changeType) {
       case 'positive':
-        return 'text-green-600';
+        return 'text-yt-success';
       case 'negative':
-        return 'text-red-600';
+        return 'text-yt-error';
       default:
-        return 'text-gray-500';
+        return 'text-muted-foreground';
     }
   };
 

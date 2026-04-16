@@ -103,7 +103,7 @@ const AdminLayout: React.FC = () => {
             <img
               src="/uploads/logos/YellowTeaLogoPng.png"
               alt="Yellow Tea"
-              className="h-32 w-auto object-contain"
+              className="h-10 w-auto object-contain"
               loading="eager"
             />
           </Link>
