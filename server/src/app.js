@@ -41,7 +41,7 @@ const allowedOrigins = envAllowedOrigins.length
     ? envAllowedOrigins
     : process.env.NODE_ENV === 'production'
         ? baseAllowedOrigins
-        : ['http://localhost:4000', 'http://localhost:8081', 'http://localhost:8082', 'http://localhost:5173', ...baseAllowedOrigins];
+        : ['http://localhost:4000', 'http://localhost:8080', 'http://localhost:8082', 'http://localhost:5173', ...baseAllowedOrigins];
 
 const corsOptions = {
     origin: function (origin, callback) {

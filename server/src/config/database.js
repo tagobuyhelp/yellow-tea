@@ -24,6 +24,35 @@ const connectDB = async () => {
 
         console.log(`MongoDB Connected: ${conn.connection.host}`);
 
+        try {
+            const adminEmail = process.env.ADMIN_EMAIL?.trim();
+            const adminPassword = process.env.ADMIN_PASSWORD;
+            const adminName = process.env.ADMIN_NAME?.trim() || 'Administrator';
+
+            if (adminEmail && adminPassword) {
+                const { default: User } = await import('../models/user.model.js');
+
+                const existingAdmin = await User.findOne({ email: adminEmail.toLowerCase() }).select('_id role');
+
+                if (!existingAdmin) {
+                    await User.create({
+                        name: adminName,
+                        email: adminEmail.toLowerCase(),
+                        password: adminPassword,
+                        role: 'admin',
+                        isEmailVerified: true
+                    });
+                    console.log('Default admin user created');
+                } else if (existingAdmin.role !== 'admin') {
+                    existingAdmin.role = 'admin';
+                    await existingAdmin.save({ validateBeforeSave: false });
+                    console.log('Default admin user role updated to admin');
+                }
+            }
+        } catch (error) {
+            console.error(`Error ensuring default admin user: ${error.message}`);
+        }
+
         // Handle connection events
         mongoose.connection.on('error', err => {
             console.error(`MongoDB connection error: ${err}`);
