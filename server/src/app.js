@@ -21,6 +21,9 @@ connectDB();
 // Initialize Express app
 const app = express();
 
+// Trust proxy (important for correct req.ip behind reverse proxies, secure cookies and rate limiting)
+app.set('trust proxy', 1);
+
 // Security HTTP headers
 app.use(helmet());
 
@@ -61,9 +64,11 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Rate limiting
+const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS) || (15 * 60 * 1000);
+const rateLimitMax = Number(process.env.RATE_LIMIT_MAX) || (process.env.NODE_ENV === 'production' ? 300 : 2000);
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    windowMs: rateLimitWindowMs,
+    max: rateLimitMax,
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     message: {
@@ -110,9 +115,6 @@ app.use((req, res, next) => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     next();
 });
-
-// Trust proxy (important for secure cookies and rate limiting behind reverse proxies)
-app.set('trust proxy', 1);
 
 // Import routes (to be added)
 import authRoutes from './routes/auth.routes.js';
